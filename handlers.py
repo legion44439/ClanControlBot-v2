@@ -145,7 +145,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=clan_menu
         )
 
-    elif text == "👤 Мой профиль":
+        elif text == "👤 Мой профиль":
         data = approved_users.get(user_id)
         if not data:
             await update.message.reply_text("⚠️ Профиль не найден.")
@@ -155,14 +155,21 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data["joined"] = today()
             save_users(approved_users)
 
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")]
+        ])
+
         await update.message.reply_text(
             "👤 Профиль игрока\n\n"
-            f"🎮 Ник: {data['name']}\n"
+            f"🎮 Игровой ник: {data['name']}\n"
+            f"📨 Telegram аккаунт: @{update.effective_user.username or 'не указан'}\n"
+            f"👤 Ник в Telegram: {update.effective_user.full_name}\n"
             f"🎖 Роль: {data['role']}\n"
             f"📅 В клане с: {data.get('joined', 'неизвестно')}\n"
             f"🏆 Активность: {data.get('activity', 0)}\n"
             f"💰 Взносы: {data.get('contribution', 0)}\n"
-            f"🆔 Telegram ID: {user_id}"
+            f"🆔 Telegram ID: {user_id}",
+            reply_markup=keyboard
         )
 
     elif text == "📋 Список участников":
