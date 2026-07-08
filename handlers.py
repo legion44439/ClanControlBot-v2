@@ -91,14 +91,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if has_access(user_id):
         await update.message.reply_text(
             "🏰 ClanControl Bot\n\nВыберите раздел:",
-            reply_markup=main_menu
+            reply_markup=main_menu,
         )
     else:
         await update.message.reply_text(
             "🛡 Добро пожаловать!\n\n"
             "У тебя пока нет доступа.\n"
             "Чтобы войти в клан, подай заявку.",
-            reply_markup=guest_menu
+            reply_markup=guest_menu,
         )
 
 
@@ -106,6 +106,8 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_id = user.id
     text = update.message.text.strip()
+
+    # ===== Поиск предмета на складе =====
     if context.user_data.get("state") == "warehouse_search":
         context.user_data.pop("state", None)
 
@@ -121,22 +123,12 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "🔎 Найдено:\n\n" + "\n".join(result)
             )
         else:
-            await update.message.reply_text(
-                "❌ Предмет не найден."
-            )
+            await update.message.reply_text("❌ Предмет не найден.")
 
         return
 
     if not has_access(user_id):
         await handle_guest(update, context, user, user_id, text)
-        return
-
-    if context.user_data.get("waiting_broadcast"):
-        await handle_broadcast(update, context, user_id, text)
-        return
-
-    if context.user_data.get("waiting_warehouse_amount"):
-        await handle_warehouse_amount(update, context, user_id, text)
         return
 
     if context.user_data.get("waiting_broadcast"):
