@@ -325,7 +325,58 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🛰 Разведку скоро добавим.")
 
     elif text == "📊 Статистика":
-        await update.message.reply_text("📊 Статистику скоро добавим.")
+    total_players = len(approved_users)
+
+    leaders = 0
+    deputies = 0
+    officers = 0
+    fighters = 0
+    farmers = 0
+    builders = 0
+    logisticians = 0
+    scouts = 0
+
+    for data in approved_users.values():
+        role = data["role"]
+
+        if "Лидер" in role:
+            leaders += 1
+        elif "Заместитель" in role:
+            deputies += 1
+        elif "Офицер" in role:
+            officers += 1
+        elif "Боец" in role:
+            fighters += 1
+        elif "Фармер" in role:
+            farmers += 1
+        elif "Строитель" in role:
+            builders += 1
+        elif "Логист" in role:
+            logisticians += 1
+        elif "Разведчик" in role:
+            scouts += 1
+
+    total_items = sum(warehouse.values())
+    unique_items = len([i for i in warehouse.values() if i > 0])
+
+    await update.message.reply_text(
+        f"📊 Статистика клана\n\n"
+        f"👥 Всего участников: {total_players}\n\n"
+
+        f"👑 Лидеров: {leaders}\n"
+        f"⭐ Заместителей: {deputies}\n"
+        f"🛡 Офицеров: {officers}\n"
+        f"⚔️ Бойцов: {fighters}\n"
+        f"⛏ Фармеров: {farmers}\n"
+        f"🏗 Строителей: {builders}\n"
+        f"📦 Логистов: {logisticians}\n"
+        f"🛰 Разведчиков: {scouts}\n\n"
+
+        f"📦 Всего ресурсов на складе: {total_items}\n"
+        f"📋 Разных предметов: {unique_items}\n"
+        f"⏳ Заявок на подтверждении: {len(warehouse_requests)}\n"
+        f"📜 Записей в истории склада: {len(warehouse_history)}"
+    )
 
     elif text == "⚙️ Настройки":
         await update.message.reply_text("⚙️ Настройки скоро добавим.")
