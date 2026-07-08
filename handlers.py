@@ -222,11 +222,11 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📅 В клане с: {data.get('joined', 'неизвестно')}\n"
             f"🏆 Активность: {data.get('activity', 0)}\n"
             f"💰 Взносы: {data.get('contribution', 0)}\n"
-
-      f"📦 Передано на склад: {data.get('warehouse_added', 0)}\n"
-f"📤 Получено со склада: {data.get('warehouse_taken', 0)}\n"
-f"⭐ Уровень: {data.get('level', 1)}\n"
-f"💎 Опыт: {data.get('xp', 0)}\n"      f"🆔 Telegram ID: {user_id}",
+            f"📦 Передано на склад: {data.get('warehouse_added', 0)}\n"
+            f"📤 Получено со склада: {data.get('warehouse_taken', 0)}\n"
+            f"⭐ Уровень: {data.get('level', 1)}\n"
+            f"💎 Опыт: {data.get('xp', 0)}\n"
+            f"🆔 Telegram ID: {user_id}",
             reply_markup=keyboard
         )
 
@@ -246,6 +246,10 @@ f"💎 Опыт: {data.get('xp', 0)}\n"      f"🆔 Telegram ID: {user_id}",
                 f"📅 В клане с: {data.get('joined', 'неизвестно')}\n"
                 f"🏆 Активность: {data.get('activity', 0)}\n"
                 f"💰 Взносы: {data.get('contribution', 0)}\n"
+                f"📦 Передано на склад: {data.get('warehouse_added', 0)}\n"
+                f"📤 Получено со склада: {data.get('warehouse_taken', 0)}\n"
+                f"⭐ Уровень: {data.get('level', 1)}\n"
+                f"💎 Опыт: {data.get('xp', 0)}\n"
                 f"🆔 Telegram ID: {uid}\n"
                 f"━━━━━━━━━━━━━━\n"
             )
@@ -703,6 +707,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📅 В клане с: {user_data.get('joined', 'неизвестно')}\n"
             f"🏆 Активность: {user_data.get('activity', 0)}\n"
             f"💰 Взносы: {user_data.get('contribution', 0)}\n"
+            f"📦 Передано на склад: {user_data.get('warehouse_added', 0)}\n"
+            f"📤 Получено со склада: {user_data.get('warehouse_taken', 0)}\n"
+            f"⭐ Уровень: {user_data.get('level', 1)}\n"
+            f"💎 Опыт: {user_data.get('xp', 0)}\n"
             f"🆔 Telegram ID: {actor_id}",
             reply_markup=keyboard
         )
@@ -739,6 +747,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎖 Роль: {user_data.get('role', 'не указана')}\n"
             f"🏆 Активность: {user_data.get('activity', 0)}\n"
             f"💰 Взносы: {user_data.get('contribution', 0)}\n"
+            f"📦 Передано на склад: {user_data.get('warehouse_added', 0)}\n"
+            f"📤 Получено со склада: {user_data.get('warehouse_taken', 0)}\n"
+            f"⭐ Уровень: {user_data.get('level', 1)}\n"
+            f"💎 Опыт: {user_data.get('xp', 0)}\n"
             f"📅 В клане с: {user_data.get('joined', 'неизвестно')}"
         )
         return
@@ -771,6 +783,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "joined": today(),
             "activity": 0,
             "contribution": 0,
+            "warehouse_added": 0,
+            "warehouse_taken": 0,
+            "level": 1,
+            "xp": 0,
+            "raids": 0,
+            "achievements": [],
         }
         save_users(approved_users)
         add_log(f"✅ {nick} принят в клан.")
@@ -881,53 +899,39 @@ async def confirm_warehouse_request(query, context, actor_id, data):
 
     req = warehouse_requests[request_id]
     item = req["item"]
-    amount = req["amount"]
+    amount = int(req["amount"])
+    player_id = int(req["player_id"])
     player_name = req["player_name"]
     actor_name = approved_users[actor_id]["name"]
     request_type = req.get("type", "add")
 
-        if request_type == "add":
-        warehouse[item] = warehouse.get(item, 0) + amount
-
     if request_type == "add":
         warehouse[item] = warehouse.get(item, 0) + amount
 
-        if req["player_id"] in approved_users:
-            approved_users[req["player_id"]]["warehouse_added"] = (
-                int(approved_users[req["player_id"]].get("warehouse_added", 0)) + amount
-            )
-            approved_users[req["player_id"]]["contribution"] = (
-                int(approved_users[req["player_id"]].get("contribution", 0)) + amount
-            )
-            approved_users[req["player_id"]]["activity"] = (
-                int(approved_users[req["player_id"]].get("activity", 0)) + 1
-            )
+        if player_id in approved_users:
+            player = approved_users[player_id]
+
+            player["warehouse_added"] = int(player.get("warehouse_added", 0) or 0) + amount
+            player["contribution"] = int(player.get("contribution", 0) or 0) + amount
+            player["activity"] = int(player.get("activity", 0) or 0) + 1
+            player["xp"] = int(player.get("xp", 0) or 0) + amount
+            player["level"] = max(1, int(player.get("xp", 0) or 0) // 1000 + 1)
+
             save_users(approved_users)
 
         action_text = f"добавил {amount} {item}"
         result_text = f"📦 {item}: +{amount}\n📊 Теперь на складе: {warehouse[item]}"
-        if req["player_id"] in approved_users:
-            approved_users[req["player_id"]]["warehouse_added"] = (
-                int(approved_users[req["player_id"]].get("warehouse_added", 0)) + amount
-            )
-            approved_users[req["player_id"]]["contribution"] = (
-                int(approved_users[req["player_id"]].get("contribution", 0)) + amount
-            )
-            approved_users[req["player_id"]]["activity"] = (
-                int(approved_users[req["player_id"]].get("activity", 0)) + 1
-            )
-            save_users(approved_users)
 
-        action_text = f"добавил {amount} {item}"
-        result_text = f"📦 {item}: +{amount}\n📊 Теперь на складе: {warehouse[item]}"
     else:
         current_amount = warehouse.get(item, 0)
+
         if current_amount < amount:
             add_warehouse_history(
                 f"❌ {actor_name} отклонил списание. "
                 f"{player_name} хотел забрать {amount} {item}, "
                 f"но на складе только {current_amount}."
             )
+
             await query.edit_message_text(
                 f"❌ Списание невозможно!\n\n"
                 f"📦 Ресурс: {item}\n"
@@ -935,27 +939,21 @@ async def confirm_warehouse_request(query, context, actor_id, data):
                 f"📤 Запрошено: {amount}\n\n"
                 f"Склад не изменён."
             )
+
             del warehouse_requests[request_id]
             save_warehouse_requests()
             return
 
-                warehouse[item] = current_amount - amount
-        if req["player_id"] in approved_users:
-            approved_users[req["player_id"]]["warehouse_taken"] = (
-                int(approved_users[req["player_id"]].get("warehouse_taken", 0)) + amount
-            )
-            approved_users[req["player_id"]]["activity"] = (
-                int(approved_users[req["player_id"]].get("activity", 0)) + 1
-            )
-            save_users(approved_users)
+        warehouse[item] = current_amount - amount
 
-        if req["player_id"] in approved_users:
-            approved_users[req["player_id"]]["warehouse_taken"] = (
-                int(approved_users[req["player_id"]].get("warehouse_taken", 0)) + amount
-            )
-            approved_users[req["player_id"]]["activity"] = (
-                int(approved_users[req["player_id"]].get("activity", 0)) + 1
-            )
+        if player_id in approved_users:
+            player = approved_users[player_id]
+
+            player["warehouse_taken"] = int(player.get("warehouse_taken", 0) or 0) + amount
+            player["activity"] = int(player.get("activity", 0) or 0) + 1
+            player["xp"] = int(player.get("xp", 0) or 0) + max(1, amount // 10)
+            player["level"] = max(1, int(player.get("xp", 0) or 0) // 1000 + 1)
+
             save_users(approved_users)
 
         action_text = f"забрал {amount} {item}"
@@ -964,6 +962,7 @@ async def confirm_warehouse_request(query, context, actor_id, data):
     del warehouse_requests[request_id]
     save_warehouse()
     save_warehouse_requests()
+
     add_warehouse_history(f"✅ {actor_name} подтвердил: {player_name} {action_text}.")
     add_log(f"📦 {actor_name} подтвердил склад: {player_name} {action_text}.")
 
@@ -975,7 +974,7 @@ async def confirm_warehouse_request(query, context, actor_id, data):
 
     try:
         await context.bot.send_message(
-            chat_id=req["player_id"],
+            chat_id=player_id,
             text=f"✅ Твоя заявка по складу подтверждена.\n\n{result_text}"
         )
     except Exception:
