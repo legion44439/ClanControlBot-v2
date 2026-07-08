@@ -1,10 +1,32 @@
 {
     "7816223649": {
         "name": "Legi",
-        "role": "👑 Лидер"
+        "role": "👑 Лидер",
+        "joined": "09.07.2026",
+        "activity": 0,
+        "contribution": 0,
+        "telegram_account": "",
+        "telegram_name": "",
+        "level": 1,
+        "xp": 0,
+        "warehouse_added": 0,
+        "warehouse_taken": 0,
+        "raids": 0,
+        "achievements": []
     },
     "1445226505": {
         "name": "Akame09",
-        "role": "⛏ Фармер"
+        "role": "⛏ Фармер",
+        "joined": "09.07.2026",
+        "activity": 0,
+        "contribution": 0,
+        "telegram_account": "",
+        "telegram_name": "",
+        "level": 1,
+        "xp": 0,
+        "warehouse_added": 0,
+        "warehouse_taken": 0,
+        "raids": 0,
+        "achievements": []
     }
 }
