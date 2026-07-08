@@ -106,7 +106,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_id = user.id
     text = update.message.text.strip()
-if context.user_data.get("state") == "warehouse_search":
+    if context.user_data.get("state") == "warehouse_search":
     context.user_data.pop("state", None)
 
     query = text.lower()
