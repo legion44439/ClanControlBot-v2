@@ -373,16 +373,23 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📦 Всего ресурсов на складе: {total_items}\n"
         f"📋 Разных предметов: {unique_items}\n"
         f"⏳ Заявок на подтверждении: {len(warehouse_requests)}"
-)
+    )
 
     elif text == "⚙️ Настройки":
-        await update.message.reply_text("⚙️ Настройки скоро добавим."
+        await update.message.reply_text(
+            "⚙️ Настройки скоро добавим."
+        )
 
     elif text == "⬅️ Назад":
-        await update.message.reply_text("🏰 Главное меню", reply_markup=main_menu)
+        await update.message.reply_text(
+            "🏰 Главное меню",
+            reply_markup=main_menu
+        )
 
     else:
-        await update.message.reply_text("Выберите раздел через кнопки меню.")
+        await update.message.reply_text(
+            "Выберите раздел через кнопки меню."
+        )
 
 
 async def show_warehouse(update: Update):
