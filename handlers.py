@@ -575,6 +575,39 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     actor_id = query.from_user.id
     data = query.data
+    if data == "edit_profile":
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🎮 Игровой ник",
+                    callback_data="edit_game_nick"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📨 Telegram аккаунт",
+                    callback_data="edit_username"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "👤 Ник в Telegram",
+                    callback_data="edit_fullname"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="profile_back"
+                )
+            ],
+        ])
+
+        await query.edit_message_text(
+            "✏️ Что вы хотите изменить?",
+            reply_markup=keyboard
+        )
+        return
 
     if data.startswith("warehouse_confirm_"):
         await confirm_warehouse_request(query, context, actor_id, data)
