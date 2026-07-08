@@ -113,19 +113,28 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = []
 
     for item, amount in warehouse.items():
-        if query in item.lower():
-            result.append(f"📦 {item} — {amount}")
+            if query in item.lower():
+                result.append(f"📦 {item} — {amount}")
 
-    if result:
-        await update.message.reply_text(
-            "🔎 Найдено:\n\n" + "\n".join(result)
-        )
-    else:
-        await update.message.reply_text("❌ Предмет не найден.")
+        if result:
+            await update.message.reply_text(
+                "🔎 Найдено:\n\n" + "\n".join(result)
+            )
+        else:
+            await update.message.reply_text("❌ Предмет не найден.")
 
-    return
+        return
+
     if not has_access(user_id):
         await handle_guest(update, context, user, user_id, text)
+        return
+
+    if context.user_data.get("waiting_broadcast"):
+        await handle_broadcast(update, context, user_id, text)
+        return
+
+    if context.user_data.get("waiting_warehouse_amount"):
+        await handle_warehouse_amount(update, context, user_id, text)
         return
 
     if context.user_data.get("waiting_broadcast"):
