@@ -378,8 +378,8 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📜 Записей в истории склада: {len(warehouse_history)}"
     )
 
-  elif text == "⚙️ Настройки":
-        await update.message.reply_text("⚙️ Настройки скоро добавим.")
+   elif text == "⚙️ Настройки":
+       await update.message.reply_text("⚙️ Настройки скоро добавим.")
 
    elif text == "⬅️ Назад":
         await update.message.reply_text("🏰 Главное меню", reply_markup=main_menu)
