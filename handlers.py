@@ -337,7 +337,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     scouts = 0
 
     for data in approved_users.values():
-        role = data["role"]
+        role = data.get("role", "")
 
         if "Лидер" in role:
             leaders += 1
@@ -362,24 +362,21 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"📊 Статистика клана\n\n"
         f"👥 Всего участников: {total_players}\n\n"
-
         f"👑 Лидеров: {leaders}\n"
         f"⭐ Заместителей: {deputies}\n"
         f"🛡 Офицеров: {officers}\n"
-        f"⚔️ Бойцов: {fighters}\n"
-        f"⛏ Фармеров: {farmers}\n"
+        f"⚔ Бойцов: {fighters}\n"
+        f"🌾 Фармеров: {farmers}\n"
         f"🏗 Строителей: {builders}\n"
         f"📦 Логистов: {logisticians}\n"
         f"🛰 Разведчиков: {scouts}\n\n"
-
         f"📦 Всего ресурсов на складе: {total_items}\n"
         f"📋 Разных предметов: {unique_items}\n"
-        f"⏳ Заявок на подтверждении: {len(warehouse_requests)}\n"
-        f"📜 Записей в истории склада: {len(warehouse_history)}"
-    )
+        f"⏳ Заявок на подтверждении: {len(warehouse_requests)}"
+)
 
    elif text == "⚙️ Настройки":
-       await update.message.reply_text("⚙️ Настройки скоро добавим.")
+       await update.message.reply_text("⚙️ Настройки скоро добавим."
 
    elif text == "⬅️ Назад":
         await update.message.reply_text("🏰 Главное меню", reply_markup=main_menu)
