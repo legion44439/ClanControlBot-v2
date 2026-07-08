@@ -325,71 +325,75 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🛰 Разведку скоро добавим.")
 
     elif text == "📊 Статистика":
-    total_players = len(approved_users)
+        total_players = len(approved_users)
 
-    leaders = 0
-    deputies = 0
-    officers = 0
-    fighters = 0
-    farmers = 0
-    builders = 0
-    logisticians = 0
-    scouts = 0
+        role_counts = {
+            "👑 Лидер": 0,
+            "⭐ Заместитель": 0,
+            "🛡 Офицер": 0,
+            "⚔️ Боец": 0,
+            "⛏ Фармер": 0,
+            "🏗 Строитель": 0,
+            "📦 Логист": 0,
+            "🛰 Разведчик": 0,
+        }
 
-    for data in approved_users.values():
-        role = data.get("role", "")
+        for data in approved_users.values():
+            role = data.get("role", "")
+            if role in role_counts:
+                role_counts[role] += 1
 
-        if "Лидер" in role:
-            leaders += 1
-        elif "Заместитель" in role:
-            deputies += 1
-        elif "Офицер" in role:
-            officers += 1
-        elif "Боец" in role:
-            fighters += 1
-        elif "Фармер" in role:
-            farmers += 1
-        elif "Строитель" in role:
-            builders += 1
-        elif "Логист" in role:
-            logisticians += 1
-        elif "Разведчик" in role:
-            scouts += 1
+        total_items = sum(int(amount or 0) for amount in warehouse.values())
+        unique_items = len([amount for amount in warehouse.values() if int(amount or 0) > 0])
 
-    total_items = sum(warehouse.values())
-    unique_items = len([i for i in warehouse.values() if i > 0])
+        top_players = sorted(
+            approved_users.values(),
+            key=lambda player: (
+                int(player.get("activity", 0) or 0),
+                int(player.get("contribution", 0) or 0),
+            ),
+            reverse=True,
+        )[:10]
 
-    await update.message.reply_text(
-        f"📊 Статистика клана\n\n"
-        f"👥 Всего участников: {total_players}\n\n"
-        f"👑 Лидеров: {leaders}\n"
-        f"⭐ Заместителей: {deputies}\n"
-        f"🛡 Офицеров: {officers}\n"
-        f"⚔ Бойцов: {fighters}\n"
-        f"🌾 Фармеров: {farmers}\n"
-        f"🏗 Строителей: {builders}\n"
-        f"📦 Логистов: {logisticians}\n"
-        f"🛰 Разведчиков: {scouts}\n\n"
-        f"📦 Всего ресурсов на складе: {total_items}\n"
-        f"📋 Разных предметов: {unique_items}\n"
-        f"⏳ Заявок на подтверждении: {len(warehouse_requests)}"
-    )
+        players_text = ""
+        if top_players:
+            for index, player in enumerate(top_players, start=1):
+                players_text += (
+                    f"{index}. {player.get('role', '⚔️ Боец')} "
+                    f"{player.get('name', 'Игрок')} — "
+                    f"активность: {player.get('activity', 0)}, "
+                    f"взносы: {player.get('contribution', 0)}\n"
+                )
+        else:
+            players_text = "Нет участников.\n"
+
+        await update.message.reply_text(
+            f"📊 Статистика клана\n\n"
+            f"👥 Всего участников: {total_players}\n\n"
+            f"👑 Лидеров: {role_counts['👑 Лидер']}\n"
+            f"⭐ Заместителей: {role_counts['⭐ Заместитель']}\n"
+            f"🛡 Офицеров: {role_counts['🛡 Офицер']}\n"
+            f"⚔️ Бойцов: {role_counts['⚔️ Боец']}\n"
+            f"⛏ Фармеров: {role_counts['⛏ Фармер']}\n"
+            f"🏗 Строителей: {role_counts['🏗 Строитель']}\n"
+            f"📦 Логистов: {role_counts['📦 Логист']}\n"
+            f"🛰 Разведчиков: {role_counts['🛰 Разведчик']}\n\n"
+            f"📦 Всего ресурсов на складе: {total_items}\n"
+            f"📋 Разных предметов: {unique_items}\n"
+            f"⏳ Заявок на подтверждении: {len(warehouse_requests)}\n"
+            f"📜 Записей в истории склада: {len(warehouse_history)}\n\n"
+            f"👤 Топ игроков по активности\n"
+            f"{players_text}"
+        )
 
     elif text == "⚙️ Настройки":
-        await update.message.reply_text(
-            "⚙️ Настройки скоро добавим."
-        )
+        await update.message.reply_text("⚙️ Настройки скоро добавим.")
 
     elif text == "⬅️ Назад":
-        await update.message.reply_text(
-            "🏰 Главное меню",
-            reply_markup=main_menu
-        )
+        await update.message.reply_text("🏰 Главное меню", reply_markup=main_menu)
 
     else:
-        await update.message.reply_text(
-            "Выберите раздел через кнопки меню."
-        )
+        await update.message.reply_text("Выберите раздел через кнопки меню.")
 
 
 async def show_warehouse(update: Update):
