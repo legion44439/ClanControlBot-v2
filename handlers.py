@@ -222,7 +222,11 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📅 В клане с: {data.get('joined', 'неизвестно')}\n"
             f"🏆 Активность: {data.get('activity', 0)}\n"
             f"💰 Взносы: {data.get('contribution', 0)}\n"
-            f"🆔 Telegram ID: {user_id}",
+
+      f"📦 Передано на склад: {data.get('warehouse_added', 0)}\n"
+f"📤 Получено со склада: {data.get('warehouse_taken', 0)}\n"
+f"⭐ Уровень: {data.get('level', 1)}\n"
+f"💎 Опыт: {data.get('xp', 0)}\n"      f"🆔 Telegram ID: {user_id}",
             reply_markup=keyboard
         )
 
