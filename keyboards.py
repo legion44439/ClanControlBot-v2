@@ -18,15 +18,17 @@ guest_menu = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+
 warehouse_menu = ReplyKeyboardMarkup(
     [
         ["📥 Пополнить склад", "📤 Списать со склада"],
-        ["📦 Остатки склада","🔍 Поиск предмета","⏳ Ожидает подтверждения"],
-        ["📜 История склада"],
+        ["📦 Остатки склада", "🔍 Поиск предмета"],
+        ["⏳ Ожидает подтверждения", "📜 История склада"],
         ["⬅️ Назад"]
     ],
     resize_keyboard=True
 )
+
 
 warehouse_categories_menu = ReplyKeyboardMarkup(
     [
@@ -37,6 +39,7 @@ warehouse_categories_menu = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
 
 weapons_menu = ReplyKeyboardMarkup(
     [
@@ -92,6 +95,8 @@ tools_menu = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+
 resources_menu = ReplyKeyboardMarkup(
     [
         ["🪵 Древесина", "🪨 Камень"],
@@ -116,6 +121,7 @@ components_menu = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
 
 clan_menu = ReplyKeyboardMarkup(
     [
