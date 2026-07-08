@@ -107,6 +107,50 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     text = update.message.text.strip()
 
+    # ===== Редактирование профиля =====
+    edit_profile = context.user_data.get("edit_profile")
+    if edit_profile:
+        if user_id not in approved_users:
+            context.user_data.pop("edit_profile", None)
+            await update.message.reply_text("⚠️ Профиль не найден.")
+            return
+
+        if edit_profile == "game_nick":
+            approved_users[user_id]["name"] = text
+            save_users(approved_users)
+            context.user_data.pop("edit_profile", None)
+
+            await update.message.reply_text(
+                f"✅ Игровой ник изменён.\n\n🎮 Новый ник: {text}"
+            )
+            return
+
+        if edit_profile == "telegram_account":
+            telegram_account = text.strip()
+            if telegram_account.lower() in ("нет", "-", "не указан"):
+                telegram_account = "не указан"
+            elif telegram_account and not telegram_account.startswith("@"):
+                telegram_account = f"@{telegram_account}"
+
+            approved_users[user_id]["telegram_account"] = telegram_account
+            save_users(approved_users)
+            context.user_data.pop("edit_profile", None)
+
+            await update.message.reply_text(
+                f"✅ Telegram аккаунт изменён.\n\n📨 {telegram_account}"
+            )
+            return
+
+        if edit_profile == "telegram_name":
+            approved_users[user_id]["telegram_name"] = text
+            save_users(approved_users)
+            context.user_data.pop("edit_profile", None)
+
+            await update.message.reply_text(
+                f"✅ Ник в Telegram изменён.\n\n👤 {text}"
+            )
+            return
+
     # ===== Поиск предмета на складе =====
     if context.user_data.get("state") == "warehouse_search":
         context.user_data.pop("state", None)
@@ -153,18 +197,28 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if "joined" not in data:
             data["joined"] = today()
-            save_users(approved_users)
+
+        if "telegram_account" not in data:
+            username = update.effective_user.username
+            data["telegram_account"] = f"@{username}" if username else "не указан"
+
+        if "telegram_name" not in data:
+            data["telegram_name"] = update.effective_user.full_name or "не указан"
+
+        save_users(approved_users)
 
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")]
+            [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")],
+            [InlineKeyboardButton("🏆 Достижения", callback_data="profile_achievements")],
+            [InlineKeyboardButton("📊 Моя статистика", callback_data="profile_stats")],
         ])
 
         await update.message.reply_text(
             "👤 Профиль игрока\n\n"
-            f"🎮 Игровой ник: {data['name']}\n"
-            f"📨 Telegram аккаунт: @{update.effective_user.username or 'не указан'}\n"
-            f"👤 Ник в Telegram: {update.effective_user.full_name}\n"
-            f"🎖 Роль: {data['role']}\n"
+            f"🎮 Игровой ник: {data.get('name', 'не указан')}\n"
+            f"📨 Telegram аккаунт: {data.get('telegram_account', 'не указан')}\n"
+            f"👤 Ник в Telegram: {data.get('telegram_name', 'не указан')}\n"
+            f"🎖 Роль: {data.get('role', 'не указана')}\n"
             f"📅 В клане с: {data.get('joined', 'неизвестно')}\n"
             f"🏆 Активность: {data.get('activity', 0)}\n"
             f"💰 Взносы: {data.get('contribution', 0)}\n"
@@ -173,9 +227,25 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif text == "📋 Список участников":
-        result = "👥 Участники клана:\n\n"
-        for data in approved_users.values():
-            result += f"{data['role']} {data['name']}\n📅 С нами с: {data.get('joined', 'неизвестно')}\n\n"
+        if not approved_users:
+            await update.message.reply_text("👥 Список участников пуст.")
+            return
+
+        result = "📋 Список участников клана\n\n"
+
+        for uid, data in approved_users.items():
+            result += (
+                f"👤 Игрок: {data.get('name', 'не указан')}\n"
+                f"📨 Telegram аккаунт: {data.get('telegram_account', 'не указан')}\n"
+                f"🪪 Ник в Telegram: {data.get('telegram_name', 'не указан')}\n"
+                f"🎖 Роль: {data.get('role', 'не указана')}\n"
+                f"📅 В клане с: {data.get('joined', 'неизвестно')}\n"
+                f"🏆 Активность: {data.get('activity', 0)}\n"
+                f"💰 Взносы: {data.get('contribution', 0)}\n"
+                f"🆔 Telegram ID: {uid}\n"
+                f"━━━━━━━━━━━━━━\n"
+            )
+
         await update.message.reply_text(result)
 
     elif text == "🎖 Изменить роль":
@@ -253,7 +323,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["state"] = "warehouse_search"
         await update.message.reply_text("🔎 Введите название предмета:")
         return
-    
+
     elif text == "📤 Списать со склада":
         context.user_data["warehouse_action"] = "remove"
         await update.message.reply_text("📤 Списание со склада\n\nВыбери категорию:", reply_markup=warehouse_categories_menu)
@@ -575,35 +645,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     actor_id = query.from_user.id
     data = query.data
+
     if data == "edit_profile":
         keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🎮 Игровой ник",
-                    callback_data="edit_game_nick"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "📨 Telegram аккаунт",
-                    callback_data="edit_username"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "👤 Ник в Telegram",
-                    callback_data="edit_fullname"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "⬅️ Назад",
-                    callback_data="profile_back"
-                )
-            ],
+            [InlineKeyboardButton("🎮 Игровой ник", callback_data="edit_game_nick")],
+            [InlineKeyboardButton("📨 Telegram аккаунт", callback_data="edit_username")],
+            [InlineKeyboardButton("👤 Ник в Telegram", callback_data="edit_fullname")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="profile_back")],
         ])
 
-                await query.edit_message_text(
+        await query.edit_message_text(
             "✏️ Что вы хотите изменить?",
             reply_markup=keyboard
         )
@@ -611,11 +662,81 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "edit_game_nick":
         context.user_data["edit_profile"] = "game_nick"
+        await query.message.reply_text("🎮 Введите новый игровой ник:")
+        return
 
+    if data == "edit_username":
+        context.user_data["edit_profile"] = "telegram_account"
         await query.message.reply_text(
-            "🎮 Введите новый игровой ник:"
+            "📨 Введите Telegram аккаунт.\n\n"
+            "Пример: @username или username"
         )
         return
+
+    if data == "edit_fullname":
+        context.user_data["edit_profile"] = "telegram_name"
+        await query.message.reply_text("👤 Введите новый ник в Telegram:")
+        return
+
+    if data == "profile_back":
+        user_data = approved_users.get(actor_id)
+        if not user_data:
+            await query.edit_message_text("⚠️ Профиль не найден.")
+            return
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")],
+            [InlineKeyboardButton("🏆 Достижения", callback_data="profile_achievements")],
+            [InlineKeyboardButton("📊 Моя статистика", callback_data="profile_stats")],
+        ])
+
+        await query.edit_message_text(
+            "👤 Профиль игрока\n\n"
+            f"🎮 Игровой ник: {user_data.get('name', 'не указан')}\n"
+            f"📨 Telegram аккаунт: {user_data.get('telegram_account', 'не указан')}\n"
+            f"👤 Ник в Telegram: {user_data.get('telegram_name', 'не указан')}\n"
+            f"🎖 Роль: {user_data.get('role', 'не указана')}\n"
+            f"📅 В клане с: {user_data.get('joined', 'неизвестно')}\n"
+            f"🏆 Активность: {user_data.get('activity', 0)}\n"
+            f"💰 Взносы: {user_data.get('contribution', 0)}\n"
+            f"🆔 Telegram ID: {actor_id}",
+            reply_markup=keyboard
+        )
+        return
+
+    if data == "profile_achievements":
+        user_data = approved_users.get(actor_id, {})
+        achievements = []
+
+        if user_data.get("joined"):
+            achievements.append("🥇 Первый день в клане")
+        if int(user_data.get("contribution", 0) or 0) >= 1000:
+            achievements.append("📦 Складовщик I")
+        if int(user_data.get("activity", 0) or 0) >= 10:
+            achievements.append("🔥 Активист I")
+        if is_leader(actor_id):
+            achievements.append("👑 Командир")
+
+        if not achievements:
+            achievements_text = "Пока нет достижений."
+        else:
+            achievements_text = "\n".join(f"• {item}" for item in achievements)
+
+        await query.message.reply_text(
+            f"🏆 Достижения игрока\n\n{achievements_text}"
+        )
+        return
+
+    if data == "profile_stats":
+        user_data = approved_users.get(actor_id, {})
+        await query.message.reply_text(
+            "📊 Моя статистика\n\n"
+            f"🎮 Игрок: {user_data.get('name', 'не указан')}\n"
+            f"🎖 Роль: {user_data.get('role', 'не указана')}\n"
+            f"🏆 Активность: {user_data.get('activity', 0)}\n"
+            f"💰 Взносы: {user_data.get('contribution', 0)}\n"
+            f"📅 В клане с: {user_data.get('joined', 'неизвестно')}"
+        )
         return
 
     if data.startswith("warehouse_confirm_"):
@@ -640,6 +761,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         nick = user_data["nick"]
         approved_users[user_id] = {
             "name": nick,
+            "telegram_account": f"@{user_data.get('username')}" if user_data.get("username") else "не указан",
+            "telegram_name": user_data.get("telegram_name") or "не указан",
             "role": "⚔️ Боец",
             "joined": today(),
             "activity": 0,
