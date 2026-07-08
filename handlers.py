@@ -107,12 +107,12 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     text = update.message.text.strip()
     if context.user_data.get("state") == "warehouse_search":
-    context.user_data.pop("state", None)
+        context.user_data.pop("state", None)
 
-    query = text.lower()
-    result = []
+        query = text.lower()
+        result = []
 
-    for item, amount in warehouse.items():
+        for item, amount in warehouse.items():
             if query in item.lower():
                 result.append(f"📦 {item} — {amount}")
 
@@ -121,7 +121,9 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "🔎 Найдено:\n\n" + "\n".join(result)
             )
         else:
-            await update.message.reply_text("❌ Предмет не найден.")
+            await update.message.reply_text(
+                "❌ Предмет не найден."
+            )
 
         return
 
