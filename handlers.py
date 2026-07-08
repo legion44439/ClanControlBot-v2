@@ -603,10 +603,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
         ])
 
-        await query.edit_message_text(
+                await query.edit_message_text(
             "✏️ Что вы хотите изменить?",
             reply_markup=keyboard
         )
+        return
+
+    if data == "edit_game_nick":
+        context.user_data["edit_profile"] = "game_nick"
+
+        await query.message.reply_text(
+            "🎮 Введите новый игровой ник:"
+        )
+        return
         return
 
     if data.startswith("warehouse_confirm_"):
