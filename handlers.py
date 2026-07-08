@@ -145,7 +145,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=clan_menu
         )
 
-        elif text == "👤 Мой профиль":
+    elif text == "👤 Мой профиль":
         data = approved_users.get(user_id)
         if not data:
             await update.message.reply_text("⚠️ Профиль не найден.")
