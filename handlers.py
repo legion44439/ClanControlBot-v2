@@ -885,6 +885,23 @@ async def confirm_warehouse_request(query, context, actor_id, data):
         if request_type == "add":
         warehouse[item] = warehouse.get(item, 0) + amount
 
+    if request_type == "add":
+        warehouse[item] = warehouse.get(item, 0) + amount
+
+        if req["player_id"] in approved_users:
+            approved_users[req["player_id"]]["warehouse_added"] = (
+                int(approved_users[req["player_id"]].get("warehouse_added", 0)) + amount
+            )
+            approved_users[req["player_id"]]["contribution"] = (
+                int(approved_users[req["player_id"]].get("contribution", 0)) + amount
+            )
+            approved_users[req["player_id"]]["activity"] = (
+                int(approved_users[req["player_id"]].get("activity", 0)) + 1
+            )
+            save_users(approved_users)
+
+        action_text = f"добавил {amount} {item}"
+        result_text = f"📦 {item}: +{amount}\n📊 Теперь на складе: {warehouse[item]}"
         if req["player_id"] in approved_users:
             approved_users[req["player_id"]]["warehouse_added"] = (
                 int(approved_users[req["player_id"]].get("warehouse_added", 0)) + amount
@@ -919,6 +936,14 @@ async def confirm_warehouse_request(query, context, actor_id, data):
             return
 
                 warehouse[item] = current_amount - amount
+        if req["player_id"] in approved_users:
+            approved_users[req["player_id"]]["warehouse_taken"] = (
+                int(approved_users[req["player_id"]].get("warehouse_taken", 0)) + amount
+            )
+            approved_users[req["player_id"]]["activity"] = (
+                int(approved_users[req["player_id"]].get("activity", 0)) + 1
+            )
+            save_users(approved_users)
 
         if req["player_id"] in approved_users:
             approved_users[req["player_id"]]["warehouse_taken"] = (
