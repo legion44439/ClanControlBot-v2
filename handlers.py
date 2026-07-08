@@ -241,7 +241,12 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "📥 Пополнить склад":
         context.user_data["warehouse_action"] = "add"
         await update.message.reply_text("📥 Пополнение склада\n\nВыбери категорию:", reply_markup=warehouse_categories_menu)
- 
+
+   elif text in ("🔎 Поиск предмета", "🔍 Поиск предмета"):
+        context.user_data["state"] = "warehouse_search"
+        await update.message.reply_text("🔎 Введите название предмета:")
+        return
+    
     elif text == "📤 Списать со склада":
         context.user_data["warehouse_action"] = "remove"
         await update.message.reply_text("📤 Списание со склада\n\nВыбери категорию:", reply_markup=warehouse_categories_menu)
