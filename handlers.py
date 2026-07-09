@@ -33,6 +33,14 @@ from achievements import (
     get_achievement_points,
 )
 
+
+from tournaments import (
+    TOURNAMENT_MODES,
+    add_tournament_result,
+    render_tournament_stats,
+    tournament_history_item,
+)
+
 from keyboards import (
     main_menu,
     guest_menu,
@@ -251,6 +259,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")],
             [InlineKeyboardButton("🏆 Достижения", callback_data="profile_achievements")],
             [InlineKeyboardButton("📊 Моя статистика", callback_data="profile_stats")],
+            [InlineKeyboardButton("🏆 Турниры", callback_data="tournaments_menu")],
         ])
 
         await update.message.reply_text(
@@ -688,6 +697,55 @@ async def handle_guest(update, context, user, user_id, text):
     await update.message.reply_text("⛔ Сначала подай заявку.", reply_markup=guest_menu)
 
 
+
+async def send_tournament_participants_menu(query, context):
+    tournament = context.user_data.get("tournament_add", {})
+    selected = set(tournament.get("participants", []))
+
+    keyboard = []
+    for uid, data in approved_users.items():
+        mark = "✅" if uid in selected else "⬜"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{mark} {data.get('name', 'Игрок')}",
+                callback_data=f"t_part_{uid}"
+            )
+        ])
+
+    keyboard.append([InlineKeyboardButton("➡️ Далее: победители", callback_data="t_part_done")])
+
+    await query.message.reply_text(
+        "🎮 Выберите участников турнира:\n\n"
+        "Можно выбрать несколько игроков.",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def send_tournament_winners_menu(query, context):
+    tournament = context.user_data.get("tournament_add", {})
+    participants = tournament.get("participants", [])
+    winners = set(tournament.get("winners", []))
+
+    keyboard = []
+    for uid in participants:
+        if uid not in approved_users:
+            continue
+        mark = "🥇" if uid in winners else "⬜"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{mark} {approved_users[uid].get('name', 'Игрок')}",
+                callback_data=f"t_win_{uid}"
+            )
+        ])
+
+    keyboard.append([InlineKeyboardButton("✅ Сохранить результат", callback_data="t_win_done")])
+
+    await query.message.reply_text(
+        "🏆 Выберите победителя или победителей:\n\n"
+        "Для командных режимов можно выбрать несколько игроков.",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -737,6 +795,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")],
             [InlineKeyboardButton("🏆 Достижения", callback_data="profile_achievements")],
             [InlineKeyboardButton("📊 Моя статистика", callback_data="profile_stats")],
+            [InlineKeyboardButton("🏆 Турниры", callback_data="tournaments_menu")],
         ])
 
         await query.edit_message_text(
@@ -822,8 +881,151 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📤 Получено со склада: {user_data.get('warehouse_taken', 0)}\n"
             f"⭐ Уровень: {user_data.get('level', 1)}\n"
             f"💎 Опыт: {user_data.get('xp', 0)}\n"
-            f"📅 В клане с: {user_data.get('joined', 'неизвестно')}"
+            f"📅 В клане с: {user_data.get('joined', 'неизвестно')}\n\n"
+            f"{render_tournament_stats(user_data)}"
         )
+        return
+
+    if data == "tournaments_menu":
+        keyboard = [
+            [InlineKeyboardButton("📊 Моя турнирная статистика", callback_data="tournaments_my_stats")],
+        ]
+
+        if can_manage_members(actor_id):
+            keyboard.append([InlineKeyboardButton("➕ Добавить результат турнира", callback_data="tournament_add")])
+
+        await query.message.reply_text(
+            "🏆 Турниры\n\n"
+            "Здесь хранится статистика участий и побед.\n"
+            "Добавлять результаты могут только лидер и заместитель.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    if data == "tournaments_my_stats":
+        user_data = approved_users.get(actor_id, {})
+        await query.message.reply_text(render_tournament_stats(user_data))
+        return
+
+    if data == "tournament_add":
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Добавлять результаты турниров может только лидер или заместитель.")
+            return
+
+        keyboard = []
+        for index, mode in enumerate(TOURNAMENT_MODES):
+            keyboard.append([
+                InlineKeyboardButton(mode["name"], callback_data=f"t_mode_{index}")
+            ])
+
+        await query.message.reply_text(
+            "🏆 Добавление результата турнира\n\nВыберите режим:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    if data.startswith("t_mode_"):
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Нет прав.")
+            return
+
+        try:
+            mode_index = int(data.replace("t_mode_", ""))
+            mode = TOURNAMENT_MODES[mode_index]
+        except Exception:
+            await query.message.reply_text("⚠️ Режим турнира не найден.")
+            return
+
+        context.user_data["tournament_add"] = {
+            "mode_id": mode["id"],
+            "participants": [],
+            "winners": [],
+        }
+
+        await send_tournament_participants_menu(query, context)
+        return
+
+    if data.startswith("t_part_"):
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Нет прав.")
+            return
+
+        tournament = context.user_data.get("tournament_add")
+        if not tournament:
+            await query.message.reply_text("⚠️ Сначала выберите режим турнира.")
+            return
+
+        if data == "t_part_done":
+            if not tournament.get("participants"):
+                await query.message.reply_text("⚠️ Выберите хотя бы одного участника.")
+                return
+            await send_tournament_winners_menu(query, context)
+            return
+
+        target_id = int(data.replace("t_part_", ""))
+        participants = tournament.setdefault("participants", [])
+
+        if target_id in participants:
+            participants.remove(target_id)
+        else:
+            participants.append(target_id)
+
+        await send_tournament_participants_menu(query, context)
+        return
+
+    if data.startswith("t_win_"):
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Нет прав.")
+            return
+
+        tournament = context.user_data.get("tournament_add")
+        if not tournament:
+            await query.message.reply_text("⚠️ Турнир не найден.")
+            return
+
+        if data == "t_win_done":
+            participants = tournament.get("participants", [])
+            winners = tournament.get("winners", [])
+            mode_id = tournament.get("mode_id")
+
+            if not winners:
+                await query.message.reply_text("⚠️ Выберите хотя бы одного победителя.")
+                return
+
+            changed_ids = add_tournament_result(approved_users, participants, winners, mode_id)
+            winner_names = [approved_users[uid].get("name", "Игрок") for uid in winners if uid in approved_users]
+            participant_names = [approved_users[uid].get("name", "Игрок") for uid in participants if uid in approved_users]
+            actor_name = approved_users.get(actor_id, {}).get("name", "Руководство")
+
+            for uid in changed_ids:
+                gained = update_player_achievements(uid)
+                await send_achievement_notifications(context, uid, gained)
+
+            save_users(approved_users)
+            add_log(
+                f"🏆 {actor_name} добавил результат турнира. "
+                f"Участники: {', '.join(participant_names)}. "
+                f"Победители: {', '.join(winner_names)}."
+            )
+
+            context.user_data.pop("tournament_add", None)
+
+            await query.message.reply_text(
+                "✅ Результат турнира сохранён.\n\n"
+                f"🎮 Участников: {len(participants)}\n"
+                f"🏆 Победителей: {', '.join(winner_names)}"
+            )
+            return
+
+        target_id = int(data.replace("t_win_", ""))
+        winners = tournament.setdefault("winners", [])
+
+        if target_id in winners:
+            winners.remove(target_id)
+        else:
+            winners.append(target_id)
+
+        await send_tournament_winners_menu(query, context)
         return
 
     if data.startswith("warehouse_confirm_"):
