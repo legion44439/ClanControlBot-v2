@@ -168,7 +168,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if has_access(user_id):
         await update.message.reply_text(
             "🏰 ClanControl Bot\n\nВыберите раздел:",
-            reply_markup=main_menu,
+            reply_markup=get_main_menu(user_id),
         )
     else:
         await update.message.reply_text(
@@ -258,6 +258,26 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if context.user_data.get("waiting_warehouse_amount"):
         await handle_warehouse_amount(update, context, user_id, text)
+        return
+
+    if context.user_data.get("waiting_create_clan"):
+        if not is_platform_owner(user_id):
+            context.user_data.pop("waiting_create_clan", None)
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        clan_name = text.strip()
+        if not clan_name:
+            await update.message.reply_text("⚠️ Название клана не может быть пустым.")
+            return
+
+        register_clan(name=clan_name, owner_id=user_id)
+        context.user_data.pop("waiting_create_clan", None)
+
+        await update.message.reply_text(
+            f"✅ Клан создан.\n\n🏰 Название: {clan_name}",
+            reply_markup=platform_menu,
+        )
         return
 
     if text == "👥 Клан":
@@ -631,11 +651,130 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{players_text}"
         )
 
+    elif text == "🛡 Платформа":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        await update.message.reply_text(
+            "🛡 Панель владельца платформы\n\nВыберите действие:",
+            reply_markup=platform_menu,
+        )
+
+    elif text == "🏰 Кланы":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        clans = get_all_clans()
+        await update.message.reply_text(render_clans_list(clans), reply_markup=platform_menu)
+
+    elif text == "➕ Создать клан":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        context.user_data["waiting_create_clan"] = True
+        await update.message.reply_text(
+            "➕ Создание нового клана\n\nВведите название клана:",
+            reply_markup=platform_menu,
+        )
+
+    elif text == "👥 Владельцы":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        clans = get_all_clans()
+        owners = []
+        for clan in clans:
+            owners.append(
+                f"🏰 {clan.get('name')}\n"
+                f"👑 Владелец: {clan.get('owner_id')}\n"
+                "━━━━━━━━━━━━━━"
+            )
+
+        await update.message.reply_text(
+            "👥 Владельцы кланов\n\n" + ("\n".join(owners) if owners else "Пока нет кланов."),
+            reply_markup=platform_menu,
+        )
+
+    elif text == "💳 Подписки":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        clans = get_all_clans()
+        lines = []
+        for clan in clans:
+            lines.append(
+                f"🏰 {clan.get('name')} — {clan.get('subscription_status', 'active')}"
+            )
+
+        await update.message.reply_text(
+            "💳 Подписки\n\n" + ("\n".join(lines) if lines else "Кланы пока не созданы."),
+            reply_markup=platform_menu,
+        )
+
+    elif text == "📊 Статистика платформы":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        clans = get_all_clans()
+        await update.message.reply_text(
+            "📊 Статистика платформы\n\n"
+            f"🏰 Всего кланов: {len(clans)}\n"
+            "💳 Подписки: скоро добавим расширенную аналитику.",
+            reply_markup=platform_menu,
+        )
+
+    elif text == "🌐 Админ-панель":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        await update.message.reply_text(
+            "🌐 Веб-админка будет следующим этапом.\n\n"
+            "Сейчас управление платформой уже доступно через Telegram.",
+            reply_markup=platform_menu,
+        )
+
+    elif text == "⚙️ Настройки платформы":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        await update.message.reply_text(
+            "⚙️ Настройки платформы скоро добавим.",
+            reply_markup=platform_menu,
+        )
+
+    elif text == "⬅️ К платформе":
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        await update.message.reply_text(
+            "🛡 Панель владельца платформы",
+            reply_markup=platform_menu,
+        )
+
+    elif text in ("👥 Участники клана", "📦 Склад клана", "🏆 Турниры клана", "🏅 Награды клана", "💳 Подписка клана", "🚫 Заблокировать клан"):
+        if not is_platform_owner(user_id):
+            await update.message.reply_text("⛔ Нет доступа.")
+            return
+
+        await update.message.reply_text(
+            "⚙️ Управление выбранным кланом будет добавлено следующим этапом.",
+            reply_markup=platform_clan_menu,
+        )
+
     elif text == "⚙️ Настройки":
         await update.message.reply_text("⚙️ Настройки скоро добавим.")
 
     elif text == "⬅️ Назад":
-        await update.message.reply_text("🏰 Главное меню", reply_markup=main_menu)
+        await update.message.reply_text("🏰 Главное меню", reply_markup=get_main_menu(user_id))
 
     else:
         await update.message.reply_text("Выберите раздел через кнопки меню.")
@@ -922,6 +1061,42 @@ async def send_bracket_participants_menu(update_or_query, context):
             text,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
+
+async def save_bracket_to_history(actor_id, participants):
+    actor_name = approved_users.get(actor_id, {}).get("name", "Руководство")
+    participant_names = [
+        approved_users[uid].get("name", "Игрок")
+        for uid in participants
+        if uid in approved_users
+    ]
+
+    bracket_data = {
+        "participants": participant_names,
+        "participant_ids": participants,
+        "created_at": now(),
+    }
+
+    save_tournament_record(
+        mode="🏅 Турнирная сетка",
+        participants=participant_names,
+        winners=[],
+        created_by=actor_id,
+        created_by_name=actor_name,
+        bracket=bracket_data,
+        status="active",
+    )
+
+    add_tournament_history({
+        "mode": "🏅 Турнирная сетка",
+        "participants": participant_names,
+        "winners": [],
+        "bracket": bracket_data,
+        "created_by": actor_id,
+        "created_by_name": actor_name,
+        "date": now(),
+        "status": "active",
+    })
+
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1723,7 +1898,8 @@ async def platform_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🛡 Панель владельца платформы\n\n"
         "/clans — список кланов\n"
-        "/create_clan Название — создать новый клан"
+        "/create_clan Название — создать новый клан",
+        reply_markup=platform_menu,
     )
 
 
