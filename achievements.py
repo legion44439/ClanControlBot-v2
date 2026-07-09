@@ -22,6 +22,29 @@ def _joined_days(player):
         return 0
 
 
+def _tournament_played(player):
+    stats = player.get("tournaments") or {}
+    if not isinstance(stats, dict):
+        return 0
+    total = 0
+    for item in stats.values():
+        if isinstance(item, dict):
+            total += _to_int(item.get("played"))
+    return total
+
+
+def _tournament_wins(player):
+    stats = player.get("tournaments") or {}
+    if not isinstance(stats, dict):
+        return 0
+    total = 0
+    for item in stats.values():
+        if isinstance(item, dict):
+            total += _to_int(item.get("wins"))
+    return total
+
+
+
 def _progress_bar(current, target, size=10):
     if target <= 0:
         return "█" * size
@@ -298,6 +321,79 @@ ACHIEVEMENTS = [
         "target": 1,
         "progress": lambda p: 1 if p.get("role") == "👑 Лидер" else 0,
     },
+
+    # Турниры
+    {
+        "id": "tournament_first_participation",
+        "category": "🏆 Турниры",
+        "icon": "🎮",
+        "name": "Первый турнир",
+        "description": "Принять участие в первом турнире.",
+        "points": 10,
+        "target": 1,
+        "progress": _tournament_played,
+    },
+    {
+        "id": "tournament_participant_10",
+        "category": "🏆 Турниры",
+        "icon": "⚔️",
+        "name": "Участник арены",
+        "description": "Принять участие в 10 турнирах.",
+        "points": 25,
+        "target": 10,
+        "progress": _tournament_played,
+    },
+    {
+        "id": "tournament_participant_50",
+        "category": "🏆 Турниры",
+        "icon": "🔥",
+        "name": "Ветеран арены",
+        "description": "Принять участие в 50 турнирах.",
+        "points": 75,
+        "target": 50,
+        "progress": _tournament_played,
+    },
+    {
+        "id": "tournament_participant_100",
+        "category": "🏆 Турниры",
+        "icon": "👑",
+        "name": "Легенда турниров",
+        "description": "Принять участие в 100 турнирах.",
+        "points": 150,
+        "target": 100,
+        "progress": _tournament_played,
+    },
+    {
+        "id": "tournament_first_win",
+        "category": "🏆 Турниры",
+        "icon": "🥇",
+        "name": "Первая победа",
+        "description": "Победить в первом турнире.",
+        "points": 25,
+        "target": 1,
+        "progress": _tournament_wins,
+    },
+    {
+        "id": "tournament_winner_10",
+        "category": "🏆 Турниры",
+        "icon": "🏆",
+        "name": "Чемпион",
+        "description": "Победить в 10 турнирах.",
+        "points": 75,
+        "target": 10,
+        "progress": _tournament_wins,
+    },
+    {
+        "id": "tournament_winner_50",
+        "category": "🏆 Турниры",
+        "icon": "💎",
+        "name": "Абсолютный чемпион",
+        "description": "Победить в 50 турнирах.",
+        "points": 200,
+        "target": 50,
+        "progress": _tournament_wins,
+    },
+
 ]
 
 
