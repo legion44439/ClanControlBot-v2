@@ -17,6 +17,10 @@ from database import (
     save_warehouse,
     save_warehouse_requests,
     add_warehouse_history,
+    save_tournament_record,
+    load_tournament_history,
+    add_tournament_history,
+    tournament_history,
     is_leader,
     is_admin,
     can_manage_members,
@@ -1133,12 +1137,39 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             winner_names = [approved_users[uid].get("name", "Игрок") for uid in winners if uid in approved_users]
             participant_names = [approved_users[uid].get("name", "Игрок") for uid in participants if uid in approved_users]
             actor_name = approved_users.get(actor_id, {}).get("name", "Руководство")
+            mode_name = mode_id
+            for mode in TOURNAMENT_MODES:
+                if mode.get("id") == mode_id:
+                    mode_name = mode.get("name", mode_id)
+                    break
 
             for uid in changed_ids:
                 gained = update_player_achievements(uid)
                 await send_achievement_notifications(context, uid, gained)
 
             save_users(approved_users)
+
+            save_tournament_record(
+                mode=mode_name,
+                participants=participant_names,
+                winners=winner_names,
+                created_by=actor_id,
+                created_by_name=actor_name,
+                bracket={},
+                status="finished",
+            )
+
+            add_tournament_history({
+                "mode": mode_name,
+                "participants": participant_names,
+                "winners": winner_names,
+                "bracket": {},
+                "created_by": actor_id,
+                "created_by_name": actor_name,
+                "date": now(),
+                "status": "finished",
+            })
+
             add_log(
                 f"🏆 {actor_name} добавил результат турнира. "
                 f"Участники: {', '.join(participant_names)}. "
@@ -1163,6 +1194,68 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             winners.append(target_id)
 
         await send_tournament_winners_menu(query, context)
+        return
+
+    if data.startswith("b_part_"):
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Нет прав.")
+            return
+
+        bracket = context.user_data.get("bracket_create")
+        if not bracket:
+            await query.message.reply_text("⚠️ Сначала выберите размер сетки.")
+            return
+
+        target_id = int(data.replace("b_part_", ""))
+        participants = bracket.setdefault("participants", [])
+        size = int(bracket.get("size") or 0)
+
+        if target_id in participants:
+            participants.remove(target_id)
+        else:
+            if len(participants) >= size:
+                await query.message.reply_text(f"⚠️ Уже выбрано {size} участников.")
+                return
+            participants.append(target_id)
+
+        await send_bracket_participants_menu(query, context)
+        return
+
+    if data == "b_shuffle":
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Нет прав.")
+            return
+
+        bracket = context.user_data.get("bracket_create")
+        if not bracket:
+            await query.message.reply_text("⚠️ Сетка не найдена.")
+            return
+
+        size = int(bracket.get("size") or 0)
+        participants = bracket.get("participants", [])
+
+        if len(participants) != size:
+            await query.message.reply_text(
+                f"⚠️ Нужно выбрать ровно {size} участников. Сейчас выбрано: {len(participants)}."
+            )
+            return
+
+        random.shuffle(participants)
+        bracket["participants"] = participants
+
+        await save_bracket_to_history(actor_id, participants)
+
+        add_log(
+            f"🏅 {approved_users.get(actor_id, {}).get('name', 'Руководство')} создал турнирную сетку на {size} участников."
+        )
+
+        await query.message.reply_text(render_tournament_bracket(participants))
+        context.user_data.pop("bracket_create", None)
+        return
+
+    if data == "b_cancel":
+        context.user_data.pop("bracket_create", None)
+        await query.message.reply_text("❌ Создание турнирной сетки отменено.")
         return
 
     if data.startswith("warehouse_confirm_"):
