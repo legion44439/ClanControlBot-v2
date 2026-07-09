@@ -62,6 +62,11 @@ from platform_core import (
     render_clans_list,
 )
 
+from platform_handlers import (
+    handle_platform_menu,
+    handle_platform_create_clan,
+)
+
 from keyboards import (
     get_main_menu,
     main_menu,
@@ -183,6 +188,12 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_id = user.id
     text = update.message.text.strip()
+
+    if await handle_platform_create_clan(update, context, text):
+        return
+
+    if await handle_platform_menu(update, context, text):
+        return
 
     # ===== Редактирование профиля =====
     edit_profile = context.user_data.get("edit_profile")
