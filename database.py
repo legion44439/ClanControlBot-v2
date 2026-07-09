@@ -9,6 +9,10 @@ from config import DATA_FILE, LEADER_ID, SUPABASE_KEY, SUPABASE_URL
 REQUEST_TIMEOUT = 20
 
 
+# ==============================
+# TIME HELPERS
+# ==============================
+
 def now_date():
     return datetime.now().strftime("%d.%m.%Y")
 
@@ -16,6 +20,10 @@ def now_date():
 def now_datetime():
     return datetime.now().strftime("%d.%m.%Y %H:%M")
 
+
+# ==============================
+# DEFAULT DATA
+# ==============================
 
 def default_user_data(data=None):
     data = data or {}
@@ -29,14 +37,24 @@ def default_user_data(data=None):
 
         "telegram_account": data.get("telegram_account") or data.get("username") or "",
         "telegram_name": data.get("telegram_name") or "",
+
         "level": int(data.get("level", 1) or 1),
         "xp": int(data.get("xp", 0) or 0),
+
         "warehouse_added": int(data.get("warehouse_added", 0) or 0),
         "warehouse_taken": int(data.get("warehouse_taken", 0) or 0),
+
         "raids": int(data.get("raids", 0) or 0),
+
         "achievements": data.get("achievements") or [],
+        "tournaments": data.get("tournaments") or {},
+        "honor_awards": data.get("honor_awards") or [],
     }
 
+
+# ==============================
+# SUPABASE CORE
+# ==============================
 
 def _require_supabase():
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -48,13 +66,16 @@ def _require_supabase():
 
 def _headers(extra=None):
     _require_supabase()
+
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json",
     }
+
     if extra:
         headers.update(extra)
+
     return headers
 
 
@@ -64,7 +85,9 @@ def _url(table):
 
 def _check(response):
     if response.status_code >= 400:
-        raise RuntimeError(f"Supabase error {response.status_code}: {response.text}")
+        raise RuntimeError(
+            f"Supabase error {response.status_code}: {response.text}"
+        )
 
     if response.text:
         try:
@@ -100,6 +123,7 @@ def _post(table, rows, upsert=False):
         json=rows,
         timeout=REQUEST_TIMEOUT,
     )
+
     return _check(response)
 
 
@@ -110,6 +134,7 @@ def _delete(table, params):
         params=params,
         timeout=REQUEST_TIMEOUT,
     )
+
     return _check(response)
 
 
@@ -117,8 +142,13 @@ def _load_json(file_name, default):
     if os.path.exists(file_name):
         with open(file_name, "r", encoding="utf-8") as file:
             return json.load(file)
+
     return default
 
+
+# ==============================
+# PERSISTENT STRUCTURES
+# ==============================
 
 class PersistentDict(dict):
     def __init__(self, *args, save_callback=None, **kwargs):
@@ -184,10 +214,19 @@ class PersistentList(list):
         self._save()
 
 
-# ---------- LOADERS ----------
+# ==============================
+# LOADERS
+# ==============================
 
 def load_users():
-    rows = _get("approved_users", {"select": "*", "order": "user_id.asc"})
+    rows = _get(
+        "approved_users",
+        {
+            "select": "*",
+            "order": "user_id.asc",
+        }
+    )
+
     users = {}
 
     for row in rows:
@@ -216,7 +255,14 @@ def load_users():
 
 
 def load_pending_users():
-    rows = _get("pending_users", {"select": "*", "order": "user_id.asc"})
+    rows = _get(
+        "pending_users",
+        {
+            "select": "*",
+            "order": "user_id.asc",
+        }
+    )
+
     result = {}
 
     for row in rows:
@@ -230,7 +276,14 @@ def load_pending_users():
 
 
 def load_clan_log():
-    rows = _get("clan_log", {"select": "date,text", "order": "id.asc"})
+    rows = _get(
+        "clan_log",
+        {
+            "select": "date,text",
+            "order": "id.asc",
+        }
+    )
+
     return [
         {
             "date": row.get("date"),
@@ -241,15 +294,29 @@ def load_clan_log():
 
 
 def load_warehouse():
-    rows = _get("warehouse", {"select": "item,amount", "order": "item.asc"})
+    rows = _get(
+        "warehouse",
+        {
+            "select": "item,amount",
+            "order": "item.asc",
+        }
+    )
+
     return {
-        row["item"]: row.get("amount") or 0
+        row["item"]: int(row.get("amount") or 0)
         for row in rows
     }
 
 
 def load_warehouse_requests():
-    rows = _get("warehouse_requests", {"select": "*", "order": "id.asc"})
+    rows = _get(
+        "warehouse_requests",
+        {
+            "select": "*",
+            "order": "id.asc",
+        }
+    )
+
     result = []
 
     for row in rows:
@@ -258,7 +325,7 @@ def load_warehouse_requests():
             "player_id": int(row.get("user_id") or 0),
             "player_name": row.get("username") or "Игрок",
             "item": row.get("item"),
-            "amount": row.get("amount") or 0,
+            "amount": int(row.get("amount") or 0),
             "date": row.get("date") or row.get("created_at") or now_datetime(),
         })
 
@@ -266,11 +333,19 @@ def load_warehouse_requests():
 
 
 def load_warehouse_history():
-    rows = _get("warehouse_history", {"select": "*", "order": "id.asc"})
+    rows = _get(
+        "warehouse_history",
+        {
+            "select": "*",
+            "order": "id.asc",
+        }
+    )
+
     result = []
 
     for row in rows:
         text = row.get("text")
+
         if text:
             result.append({
                 "date": row.get("date") or now_datetime(),
@@ -285,7 +360,37 @@ def load_warehouse_history():
     return result
 
 
-# ---------- SAVERS ----------
+def load_tournament_history():
+    rows = _get(
+        "tournaments",
+        {
+            "select": "*",
+            "order": "id.desc",
+            "limit": "100",
+        }
+    )
+
+    result = []
+
+    for row in rows:
+        result.append({
+            "id": row.get("id"),
+            "mode": row.get("mode"),
+            "participants": row.get("participants") or [],
+            "winners": row.get("winners") or [],
+            "bracket": row.get("bracket") or {},
+            "created_by": row.get("created_by"),
+            "created_by_name": row.get("created_by_name"),
+            "date": row.get("date"),
+            "status": row.get("status") or "finished",
+        })
+
+    return result
+
+
+# ==============================
+# SAVERS
+# ==============================
 
 def _save_users_raw(users):
     rows = []
@@ -303,19 +408,32 @@ def _save_users_raw(users):
 
             "telegram_account": user_data["telegram_account"],
             "telegram_name": user_data["telegram_name"],
+
             "level": user_data["level"],
             "xp": user_data["xp"],
+
             "warehouse_added": user_data["warehouse_added"],
             "warehouse_taken": user_data["warehouse_taken"],
+
             "raids": user_data["raids"],
+
             "achievements": user_data["achievements"],
+            "tournaments": user_data["tournaments"],
+            "honor_awards": user_data["honor_awards"],
         })
 
-    db_rows = _get("approved_users", {"select": "user_id"})
+    db_rows = _get(
+        "approved_users",
+        {
+            "select": "user_id",
+        }
+    )
+
     wanted = {int(row["user_id"]) for row in rows}
 
     for row in db_rows:
         uid = int(row["user_id"])
+
         if uid not in wanted:
             _delete("approved_users", {"user_id": f"eq.{uid}"})
 
@@ -360,11 +478,18 @@ def save_clan_log():
 
 
 def save_warehouse():
-    db_rows = _get("warehouse", {"select": "item"})
+    db_rows = _get(
+        "warehouse",
+        {
+            "select": "item",
+        }
+    )
+
     wanted = set(warehouse.keys())
 
     for row in db_rows:
         item = row["item"]
+
         if item not in wanted:
             _delete("warehouse", {"item": f"eq.{item}"})
 
@@ -419,7 +544,32 @@ def save_warehouse_history():
         _post("warehouse_history", rows)
 
 
-# ---------- GLOBAL DATA ----------
+def save_tournament_record(
+    mode,
+    participants,
+    winners,
+    created_by,
+    created_by_name,
+    bracket=None,
+    status="finished",
+):
+    row = {
+        "mode": mode,
+        "participants": participants or [],
+        "winners": winners or [],
+        "bracket": bracket or {},
+        "created_by": int(created_by),
+        "created_by_name": created_by_name,
+        "date": now_datetime(),
+        "status": status,
+    }
+
+    _post("tournaments", [row])
+
+
+# ==============================
+# GLOBAL DATA
+# ==============================
 
 approved_users = PersistentDict(
     load_users(),
@@ -451,8 +601,15 @@ warehouse_history = PersistentList(
     save_callback=save_warehouse_history
 )
 
+tournament_history = PersistentList(
+    load_tournament_history(),
+    save_callback=None
+)
 
-# ---------- HELPERS ----------
+
+# ==============================
+# HELPERS
+# ==============================
 
 def add_log(text):
     clan_log.append({
@@ -478,12 +635,24 @@ def add_warehouse_history(text):
     save_warehouse_history()
 
 
+def add_tournament_history(record):
+    tournament_history.insert(0, record)
+
+    if len(tournament_history) > 100:
+        del tournament_history[100:]
+
+
 def add_xp(user_id, amount):
     if user_id not in approved_users:
         return
 
-    approved_users[user_id]["xp"] = int(approved_users[user_id].get("xp", 0)) + amount
-    approved_users[user_id]["level"] = max(1, approved_users[user_id]["xp"] // 100 + 1)
+    approved_users[user_id]["xp"] = (
+        int(approved_users[user_id].get("xp", 0) or 0) + amount
+    )
+    approved_users[user_id]["level"] = max(
+        1,
+        int(approved_users[user_id]["xp"]) // 1000 + 1
+    )
 
     save_users(approved_users)
 
