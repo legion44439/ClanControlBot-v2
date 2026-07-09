@@ -1,19 +1,32 @@
 from telegram import ReplyKeyboardMarkup
 
+from platform_core import is_platform_owner
+
 
 # ==============================
 # ГЛАВНОЕ МЕНЮ
 # ==============================
 
-main_menu = ReplyKeyboardMarkup(
-    [
+def get_main_menu(user_id: int):
+    rows = [
         ["👥 Клан", "📦 Склад"],
         ["🏆 Турниры", "🛰 Разведка"],
         ["⚔️ Рейды", "📊 Статистика"],
-        ["⚙️ Настройки"],
-    ],
-    resize_keyboard=True
-)
+    ]
+
+    if is_platform_owner(user_id):
+        rows.append(["🛡 Платформа"])
+
+    rows.append(["⚙️ Настройки"])
+
+    return ReplyKeyboardMarkup(
+        rows,
+        resize_keyboard=True,
+    )
+
+
+# Для совместимости со старым кодом
+main_menu = get_main_menu(0)
 
 
 # ==============================
@@ -53,6 +66,33 @@ honor_awards_menu = ReplyKeyboardMarkup(
         ["⚒ Мастер обеспечения", "🔥 Самый активный"],
         ["⭐ Игрок месяца", "🌟 Гордость клана"],
         ["⬅️ Назад"],
+    ],
+    resize_keyboard=True
+)
+
+
+# ==============================
+# ПЛАТФОРМА
+# ==============================
+
+platform_menu = ReplyKeyboardMarkup(
+    [
+        ["🏰 Кланы", "👥 Владельцы"],
+        ["➕ Создать клан", "💳 Подписки"],
+        ["📊 Статистика платформы", "🌐 Админ-панель"],
+        ["⚙️ Настройки платформы"],
+        ["⬅️ Назад"],
+    ],
+    resize_keyboard=True
+)
+
+
+platform_clan_menu = ReplyKeyboardMarkup(
+    [
+        ["👥 Участники клана", "📦 Склад клана"],
+        ["🏆 Турниры клана", "🏅 Награды клана"],
+        ["💳 Подписка клана", "🚫 Заблокировать клан"],
+        ["⬅️ К платформе"],
     ],
     resize_keyboard=True
 )
