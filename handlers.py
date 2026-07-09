@@ -102,6 +102,94 @@ for items in WAREHOUSE_CATEGORIES.values():
     WAREHOUSE_ITEMS.update(items)
 
 
+HONOR_AWARDS = [
+    {
+        "id": "season_champion",
+        "icon": "🥇",
+        "name": "Чемпион сезона",
+        "description": "За победу и выдающийся результат в сезоне.",
+    },
+    {
+        "id": "best_fighter",
+        "icon": "⚔️",
+        "name": "Лучший боец",
+        "description": "За отличные боевые результаты и силу в сражениях.",
+    },
+    {
+        "id": "undefeated",
+        "icon": "🛡",
+        "name": "Непобедимый",
+        "description": "За серию побед и уверенную игру.",
+    },
+    {
+        "id": "tournament_winner",
+        "icon": "🏆",
+        "name": "Победитель турнира",
+        "description": "За победу в клановом турнире.",
+    },
+    {
+        "id": "clan_hero",
+        "icon": "👑",
+        "name": "Герой клана",
+        "description": "За важный поступок и вклад в судьбу клана.",
+    },
+    {
+        "id": "clan_legend",
+        "icon": "💎",
+        "name": "Легенда клана",
+        "description": "Одна из высших почётных наград клана.",
+    },
+    {
+        "id": "honor_veteran",
+        "icon": "🎖",
+        "name": "Почётный ветеран",
+        "description": "За долгую службу и верность клану.",
+    },
+    {
+        "id": "loyalty",
+        "icon": "🤝",
+        "name": "Верность клану",
+        "description": "За надёжность, поддержку и преданность коллективу.",
+    },
+    {
+        "id": "best_supplier",
+        "icon": "📦",
+        "name": "Лучший снабженец",
+        "description": "За огромный вклад в склад и обеспечение клана.",
+    },
+    {
+        "id": "best_builder",
+        "icon": "🏗",
+        "name": "Лучший строитель",
+        "description": "За развитие базы и строительную помощь клану.",
+    },
+    {
+        "id": "supply_master",
+        "icon": "⚒",
+        "name": "Мастер обеспечения",
+        "description": "За стабильную помощь ресурсами и предметами.",
+    },
+    {
+        "id": "most_active",
+        "icon": "🔥",
+        "name": "Самый активный",
+        "description": "За высокую активность и постоянное участие в жизни клана.",
+    },
+    {
+        "id": "player_month",
+        "icon": "⭐",
+        "name": "Игрок месяца",
+        "description": "За лучший общий вклад в течение месяца.",
+    },
+    {
+        "id": "clan_pride",
+        "icon": "🌟",
+        "name": "Гордость клана",
+        "description": "За примерное поведение, пользу и уважение внутри клана.",
+    },
+]
+
+
 def today():
     return datetime.now().strftime("%d.%m.%Y")
 
@@ -178,6 +266,110 @@ def get_tournament_totals(player):
     return played, wins, winrate
 
 
+def get_honor_award(award_id):
+    for award in HONOR_AWARDS:
+        if award["id"] == award_id:
+            return award
+    return None
+
+
+def get_player_honor_award_ids(player):
+    awards = player.get("honor_awards") or []
+    result = []
+
+    if not isinstance(awards, list):
+        return result
+
+    for item in awards:
+        if isinstance(item, dict):
+            award_id = item.get("id")
+        else:
+            award_id = str(item)
+
+        if award_id and award_id not in result:
+            result.append(award_id)
+
+    return result
+
+
+def get_player_honor_award_records(player):
+    awards = player.get("honor_awards") or []
+    result = []
+
+    if not isinstance(awards, list):
+        return result
+
+    for item in awards:
+        if isinstance(item, dict):
+            result.append(item)
+        else:
+            result.append({"id": str(item)})
+
+    return result
+
+
+def render_honor_awards_collection(player):
+    received_ids = set(get_player_honor_award_ids(player))
+    total = len(HONOR_AWARDS)
+    received = len(received_ids)
+
+    text = (
+        "🏅 Почётные награды\n\n"
+        f"Получено: {received} / {total}\n"
+        f"{progress_bar(received, total, 10)}\n\n"
+    )
+
+    current_category = None
+    categories = {
+        "season_champion": "🏆 Боевые",
+        "best_fighter": "🏆 Боевые",
+        "undefeated": "🏆 Боевые",
+        "tournament_winner": "🏆 Боевые",
+        "clan_hero": "👑 Клановые",
+        "clan_legend": "👑 Клановые",
+        "honor_veteran": "👑 Клановые",
+        "loyalty": "👑 Клановые",
+        "best_supplier": "📦 Склад",
+        "best_builder": "📦 Склад",
+        "supply_master": "📦 Склад",
+        "most_active": "🔥 Активность",
+        "player_month": "🔥 Активность",
+        "clan_pride": "🔥 Активность",
+    }
+
+    for award in HONOR_AWARDS:
+        category = categories.get(award["id"], "🏅 Другое")
+        if category != current_category:
+            current_category = category
+            text += f"\n{category}\n"
+
+        status = "✅" if award["id"] in received_ids else "🔒"
+        text += f"{status} {award['icon']} {award['name']} — {award['description']}\n"
+
+    return text.strip()
+
+
+def render_honor_awards_short(player):
+    records = get_player_honor_award_records(player)
+    if not records:
+        return "Пока нет"
+
+    lines = []
+    for record in records[-3:]:
+        award = get_honor_award(record.get("id"))
+        if award:
+            lines.append(f"{award['icon']} {award['name']}")
+
+    if not lines:
+        return "Пока нет"
+
+    extra = len(records) - len(lines)
+    if extra > 0:
+        lines.append(f"…и ещё {extra}")
+
+    return "\n".join(lines)
+
+
 def render_profile_card(player, user_id, achievement_points):
     level = safe_int(player.get("level"), 1)
     xp = safe_int(player.get("xp"), 0)
@@ -227,6 +419,9 @@ def render_profile_card(player, user_id, achievement_points):
         f"🎮 Участий: {tournament_played}\n"
         f"🥇 Побед: {tournament_wins}\n"
         f"📈 Винрейт: {tournament_winrate}%\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🏅 ПОЧЁТНЫЕ НАГРАДЫ\n\n"
+        f"{render_honor_awards_short(player)}\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "📱 TELEGRAM\n\n"
         f"👤 Имя: {player.get('telegram_name', 'не указано')}\n"
@@ -387,12 +582,20 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update_player_achievements(user_id)
         achievement_points = get_achievement_points(data)
 
-        keyboard = InlineKeyboardMarkup([
+        keyboard_rows = [
             [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")],
             [InlineKeyboardButton("🏆 Достижения", callback_data="profile_achievements")],
+            [InlineKeyboardButton("🏅 Почётные награды", callback_data="profile_honor_awards")],
             [InlineKeyboardButton("📊 Моя статистика", callback_data="profile_stats")],
             [InlineKeyboardButton("🏆 Турниры", callback_data="tournaments_menu")],
-        ])
+        ]
+
+        if can_manage_members(user_id):
+            keyboard_rows.append([
+                InlineKeyboardButton("🎖 Выдать награду", callback_data="honor_give_menu")
+            ])
+
+        keyboard = InlineKeyboardMarkup(keyboard_rows)
 
         await update.message.reply_text(
             render_profile_card(data, user_id, achievement_points),
@@ -488,6 +691,24 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         await update.message.reply_text("👑 Выбери нового лидера:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif text == "🏅 Почётные награды":
+        if can_manage_members(user_id):
+            keyboard = []
+            for uid, player in approved_users.items():
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"{player.get('role', '⚔️ Боец')} {player.get('name', 'Игрок')}",
+                        callback_data=f"honor_target_{uid}"
+                    )
+                ])
+
+            await update.message.reply_text(
+                "🎖 Выберите игрока для награждения:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        else:
+            await update.message.reply_text(render_honor_awards_collection(approved_users.get(user_id, {})))
 
     elif text == "📦 Склад":
         await update.message.reply_text("📦 Склад клана\n\nВыберите действие:", reply_markup=warehouse_menu)
@@ -1044,12 +1265,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("⚠️ Профиль не найден.")
             return
 
-        keyboard = InlineKeyboardMarkup([
+        keyboard_rows = [
             [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")],
             [InlineKeyboardButton("🏆 Достижения", callback_data="profile_achievements")],
+            [InlineKeyboardButton("🏅 Почётные награды", callback_data="profile_honor_awards")],
             [InlineKeyboardButton("📊 Моя статистика", callback_data="profile_stats")],
             [InlineKeyboardButton("🏆 Турниры", callback_data="tournaments_menu")],
-        ])
+        ]
+
+        if can_manage_members(actor_id):
+            keyboard_rows.append([
+                InlineKeyboardButton("🎖 Выдать награду", callback_data="honor_give_menu")
+            ])
+
+        keyboard = InlineKeyboardMarkup(keyboard_rows)
 
         achievement_points = get_achievement_points(user_data)
 
@@ -1127,6 +1356,151 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📅 В клане с: {user_data.get('joined', 'неизвестно')}\n\n"
             f"{render_tournament_stats(user_data)}"
         )
+        return
+
+    if data == "profile_honor_awards":
+        user_data = approved_users.get(actor_id, {})
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ Назад к профилю", callback_data="profile_back")]
+        ])
+        await query.message.reply_text(
+            render_honor_awards_collection(user_data),
+            reply_markup=keyboard
+        )
+        return
+
+    if data == "honor_give_menu":
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Выдавать почётные награды может только лидер или заместитель.")
+            return
+
+        keyboard = []
+        for uid, player in approved_users.items():
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{player.get('role', '⚔️ Боец')} {player.get('name', 'Игрок')}",
+                    callback_data=f"honor_target_{uid}"
+                )
+            ])
+
+        await query.message.reply_text(
+            "🎖 Выберите игрока для награждения:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    if data.startswith("honor_target_"):
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Нет прав.")
+            return
+
+        try:
+            target_id = int(data.replace("honor_target_", ""))
+        except Exception:
+            await query.message.reply_text("⚠️ Игрок не найден.")
+            return
+
+        if target_id not in approved_users:
+            await query.message.reply_text("⚠️ Игрок не найден.")
+            return
+
+        context.user_data["honor_target"] = target_id
+        target_name = approved_users[target_id].get("name", "Игрок")
+
+        keyboard = []
+        for award in HONOR_AWARDS:
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{award['icon']} {award['name']}",
+                    callback_data=f"honor_award_{award['id']}"
+                )
+            ])
+        keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="honor_cancel")])
+
+        await query.message.reply_text(
+            f"🏅 Выберите награду для игрока {target_name}:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    if data.startswith("honor_award_"):
+        if not can_manage_members(actor_id):
+            await query.message.reply_text("⛔ Нет прав.")
+            return
+
+        target_id = context.user_data.get("honor_target")
+        if target_id not in approved_users:
+            await query.message.reply_text("⚠️ Сначала выберите игрока.")
+            return
+
+        award_id = data.replace("honor_award_", "")
+        award = get_honor_award(award_id)
+        if not award:
+            await query.message.reply_text("⚠️ Награда не найдена.")
+            return
+
+        target = approved_users[target_id]
+        records = target.get("honor_awards")
+        if not isinstance(records, list):
+            records = []
+
+        already_has = award_id in get_player_honor_award_ids(target)
+        if already_has:
+            await query.message.reply_text(
+                f"⚠️ У игрока {target.get('name', 'Игрок')} уже есть награда:\n\n"
+                f"{award['icon']} {award['name']}"
+            )
+            return
+
+        actor_name = approved_users.get(actor_id, {}).get("name", "Руководство")
+        record = {
+            "id": award_id,
+            "date": now(),
+            "by": actor_id,
+            "by_name": actor_name,
+        }
+        records.append(record)
+
+        target["honor_awards"] = records
+        target["activity"] = safe_int(target.get("activity")) + 10
+        target["xp"] = safe_int(target.get("xp")) + 250
+        target["level"] = max(1, safe_int(target.get("xp")) // 1000 + 1)
+
+        gained = update_player_achievements(target_id)
+        save_users(approved_users)
+
+        target_name = target.get("name", "Игрок")
+        add_log(
+            f"🏅 {actor_name} выдал почётную награду {award['icon']} {award['name']} игроку {target_name}."
+        )
+
+        try:
+            await context.bot.send_message(
+                chat_id=target_id,
+                text=(
+                    "🎉 Вам выдана почётная награда!\n\n"
+                    f"{award['icon']} {award['name']}\n"
+                    f"📖 {award['description']}\n\n"
+                    "🔥 +10 активности\n"
+                    "💎 +250 XP"
+                )
+            )
+            await send_achievement_notifications(context, target_id, gained)
+        except Exception:
+            pass
+
+        context.user_data.pop("honor_target", None)
+
+        await query.message.reply_text(
+            "✅ Почётная награда выдана.\n\n"
+            f"👤 Игрок: {target_name}\n"
+            f"🏅 Награда: {award['icon']} {award['name']}"
+        )
+        return
+
+    if data == "honor_cancel":
+        context.user_data.pop("honor_target", None)
+        await query.message.reply_text("❌ Выдача награды отменена.")
         return
 
     if data == "tournaments_menu":
@@ -1394,6 +1768,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "xp": 0,
             "raids": 0,
             "achievements": [],
+            "honor_awards": [],
         }
         save_users(approved_users)
         add_log(f"✅ {nick} принят в клан.")
