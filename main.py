@@ -16,12 +16,11 @@ from handlers import (
     start,
     menu_handler,
     button_handler,
+    platform_command,
+    clans_command,
+    create_clan_command,
 )
 
-
-# ==============================
-# WEB SERVER (Render)
-# ==============================
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -45,10 +44,6 @@ def run_web_server():
     server.serve_forever()
 
 
-# ==============================
-# TELEGRAM
-# ==============================
-
 if not TOKEN:
     raise RuntimeError(
         "TOKEN не найден. Добавь TOKEN в Environment Variables на Render."
@@ -58,16 +53,12 @@ Thread(target=run_web_server, daemon=True).start()
 
 app = Application.builder().token(TOKEN).build()
 
-
-# ==============================
-# HANDLERS
-# ==============================
-
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("platform", platform_command))
+app.add_handler(CommandHandler("clans", clans_command))
+app.add_handler(CommandHandler("create_clan", create_clan_command))
 
-app.add_handler(
-    CallbackQueryHandler(button_handler)
-)
+app.add_handler(CallbackQueryHandler(button_handler))
 
 app.add_handler(
     MessageHandler(
@@ -76,15 +67,8 @@ app.add_handler(
     )
 )
 
-
-# ==============================
-# START
-# ==============================
-
 print(f"✅ {BOT_NAME} v{BOT_VERSION} успешно запущен.")
 
-asyncio.set_event_loop(
-    asyncio.new_event_loop()
-)
+asyncio.set_event_loop(asyncio.new_event_loop())
 
 app.run_polling()
