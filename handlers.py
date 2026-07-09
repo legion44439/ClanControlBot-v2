@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
@@ -54,6 +55,8 @@ from keyboards import (
     armor_menu,
     tools_menu,
     raid_menu,
+    tournament_menu,
+    tournament_bracket_size_menu,
 )
 
 WAREHOUSE_CATEGORIES = {
@@ -438,6 +441,73 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             result += f"🕒 {item['date']}\n{item['text']}\n\n"
         await update.message.reply_text(result)
 
+    elif text == "🏆 Турниры":
+        await update.message.reply_text(
+            "🏆 Турниры\n\nВыберите действие:",
+            reply_markup=tournament_menu
+        )
+
+    elif text in ("🏅 Турнирная сетка", "🎲 Жеребьёвка"):
+        if not can_manage_members(user_id):
+            await update.message.reply_text(
+                "⛔ Создавать турнирную сетку может только лидер или заместитель."
+            )
+            return
+
+        context.user_data["bracket_create"] = {
+            "size": None,
+            "participants": [],
+        }
+
+        await update.message.reply_text(
+            "🏅 Турнирная сетка\n\n"
+            "Выберите размер сетки:",
+            reply_markup=tournament_bracket_size_menu
+        )
+        return
+
+    elif text in ("4 участника", "8 участников", "16 участников", "32 участника"):
+        if not can_manage_members(user_id):
+            await update.message.reply_text("⛔ Нет прав.")
+            return
+
+        size = int(text.split()[0])
+        context.user_data["bracket_create"] = {
+            "size": size,
+            "participants": [],
+        }
+
+        await send_bracket_participants_menu(update, context)
+        return
+
+    elif text == "📊 Турнирная статистика":
+        await update.message.reply_text(render_tournament_stats(approved_users.get(user_id, {})))
+
+    elif text == "📜 История турниров":
+        await update.message.reply_text(
+            "📜 История турниров\n\n"
+            "История турниров будет добавлена следующим этапом."
+        )
+
+    elif text == "➕ Добавить результат турнира":
+        if not can_manage_members(user_id):
+            await update.message.reply_text(
+                "⛔ Добавлять результаты турниров может только лидер или заместитель."
+            )
+            return
+
+        keyboard = []
+        for index, mode in enumerate(TOURNAMENT_MODES):
+            keyboard.append([
+                InlineKeyboardButton(mode["name"], callback_data=f"t_mode_{index}")
+            ])
+
+        await update.message.reply_text(
+            "🏆 Добавление результата турнира\n\nВыберите режим:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
     elif text == "⚔️ Рейды":
         await update.message.reply_text("⚔️ Раздел рейдов\n\nВыберите цель:", reply_markup=raid_menu)
 
@@ -745,6 +815,73 @@ async def send_tournament_winners_menu(query, context):
         "Для командных режимов можно выбрать несколько игроков.",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+
+
+def render_tournament_bracket(participant_ids):
+    names = []
+    for uid in participant_ids:
+        if uid in approved_users:
+            names.append(approved_users[uid].get("name", "Игрок"))
+
+    if not names:
+        return "⚠️ Участники не выбраны."
+
+    title = f"🏅 Турнирная сетка на {len(names)} участников\n\n"
+    lines = []
+    round_name = "1/2 финала" if len(names) == 4 else "1/4 финала" if len(names) == 8 else "1/8 финала" if len(names) == 16 else "1/16 финала"
+    lines.append(f"{round_name}\n")
+
+    for i in range(0, len(names), 2):
+        first = names[i]
+        second = names[i + 1] if i + 1 < len(names) else "Свободный слот"
+        lines.append(f"{first} 🆚 {second}")
+
+    lines.append("\n🎲 Участники распределены случайно.")
+    lines.append("Победителей можно будет внести через «➕ Добавить результат турнира».")
+
+    return title + "\n".join(lines)
+
+
+async def send_bracket_participants_menu(update_or_query, context):
+    bracket = context.user_data.get("bracket_create", {})
+    size = bracket.get("size")
+    selected = set(bracket.get("participants", []))
+
+    keyboard = []
+    for uid, data in approved_users.items():
+        mark = "✅" if uid in selected else "⬜"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{mark} {data.get('name', 'Игрок')}",
+                callback_data=f"b_part_{uid}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("🎲 Перемешать и создать сетку", callback_data="b_shuffle")
+    ])
+    keyboard.append([
+        InlineKeyboardButton("❌ Отмена", callback_data="b_cancel")
+    ])
+
+    text = (
+        f"🏅 Создание турнирной сетки\n\n"
+        f"Размер: {size} участников\n"
+        f"Выбрано: {len(selected)} / {size}\n\n"
+        "Выберите участников:"
+    )
+
+    if hasattr(update_or_query, "message") and update_or_query.message:
+        await update_or_query.message.reply_text(
+            text,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        await update_or_query.message.reply_text(
+            text,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
