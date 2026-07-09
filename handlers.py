@@ -26,6 +26,10 @@ from database import (
 from achievements import (
     sync_achievements,
     render_achievements,
+    render_achievements_overview,
+    render_achievement_category,
+    render_new_achievement_message,
+    get_achievement_categories,
     get_achievement_points,
 )
 
@@ -104,6 +108,20 @@ def update_player_achievements(user_id):
 
     save_users(approved_users)
     return gained
+
+
+async def send_achievement_notifications(context, chat_id, gained):
+    if not gained:
+        return
+
+    for achievement in gained:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=render_new_achievement_message(achievement),
+            )
+        except Exception:
+            pass
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -741,10 +759,54 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "profile_achievements":
         user_data = approved_users.get(actor_id, {})
-        update_player_achievements(actor_id)
+        gained = update_player_achievements(actor_id)
+        await send_achievement_notifications(context, actor_id, gained)
+
+        categories = get_achievement_categories()
+        keyboard = []
+        for index, category in enumerate(categories):
+            keyboard.append([
+                InlineKeyboardButton(category, callback_data=f"ach_category_{index}")
+            ])
+        keyboard.append([
+            InlineKeyboardButton("📜 Все достижения", callback_data="ach_all")
+        ])
 
         await query.message.reply_text(
-            render_achievements(user_data)
+            render_achievements_overview(user_data),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    if data.startswith("ach_category_"):
+        user_data = approved_users.get(actor_id, {})
+        categories = get_achievement_categories()
+
+        try:
+            category_index = int(data.replace("ach_category_", ""))
+            category = categories[category_index]
+        except Exception:
+            await query.message.reply_text("⚠️ Категория не найдена.")
+            return
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ К категориям", callback_data="profile_achievements")]
+        ])
+
+        await query.message.reply_text(
+            render_achievement_category(user_data, category),
+            reply_markup=keyboard
+        )
+        return
+
+    if data == "ach_all":
+        user_data = approved_users.get(actor_id, {})
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ К категориям", callback_data="profile_achievements")]
+        ])
+        await query.message.reply_text(
+            render_achievements(user_data),
+            reply_markup=keyboard
         )
         return
 
@@ -851,6 +913,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         old_role = approved_users[target_id]["role"]
         approved_users[target_id]["role"] = roles[role_name]
+        approved_users[target_id]["activity"] = int(approved_users[target_id].get("activity", 0) or 0) + 5
+        gained = update_player_achievements(target_id)
+        await send_achievement_notifications(context, target_id, gained)
         save_users(approved_users)
         name = approved_users[target_id]["name"]
         actor = approved_users[actor_id]["name"]
@@ -930,6 +995,7 @@ async def confirm_warehouse_request(query, context, actor_id, data):
                 player["activity"] = int(player.get("activity", 0) or 0) + len(gained) * 2
 
             save_users(approved_users)
+            await send_achievement_notifications(context, player_id, gained)
 
         action_text = f"добавил {amount} {item}"
         result_text = f"📦 {item}: +{amount}\n📊 Теперь на складе: {warehouse[item]}"
@@ -970,6 +1036,7 @@ async def confirm_warehouse_request(query, context, actor_id, data):
                 player["activity"] = int(player.get("activity", 0) or 0) + len(gained) * 2
 
             save_users(approved_users)
+            await send_achievement_notifications(context, player_id, gained)
 
         action_text = f"забрал {amount} {item}"
         result_text = f"📦 {item}: -{amount}\n📊 Осталось на складе: {warehouse[item]}"
