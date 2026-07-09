@@ -63,9 +63,11 @@ from platform_core import (
 )
 
 from keyboards import (
+    get_main_menu,
     main_menu,
     guest_menu,
     clan_menu,
+    honor_awards_menu,
     warehouse_menu,
     warehouse_categories_menu,
     resources_menu,
@@ -76,7 +78,10 @@ from keyboards import (
     tools_menu,
     raid_menu,
     tournament_menu,
+    tournament_modes_menu,
     tournament_bracket_size_menu,
+    platform_menu,
+    platform_clan_menu,
 )
 
 WAREHOUSE_CATEGORIES = {
