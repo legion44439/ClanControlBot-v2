@@ -23,6 +23,12 @@ from database import (
     can_confirm_warehouse,
 )
 
+from achievements import (
+    sync_achievements,
+    render_achievements,
+    get_achievement_points,
+)
+
 from keyboards import (
     main_menu,
     guest_menu,
@@ -83,6 +89,21 @@ def today():
 
 def now():
     return datetime.now().strftime("%d.%m.%Y %H:%M")
+
+
+def update_player_achievements(user_id):
+    if user_id not in approved_users:
+        return []
+
+    gained = sync_achievements(approved_users[user_id])
+
+    if gained:
+        approved_users[user_id]["activity"] = (
+            int(approved_users[user_id].get("activity", 0) or 0) + len(gained) * 2
+        )
+
+    save_users(approved_users)
+    return gained
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -205,7 +226,8 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if "telegram_name" not in data:
             data["telegram_name"] = update.effective_user.full_name or "не указан"
 
-        save_users(approved_users)
+        update_player_achievements(user_id)
+        achievement_points = get_achievement_points(data)
 
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("✏️ Изменить данные", callback_data="edit_profile")],
@@ -226,6 +248,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📤 Получено со склада: {data.get('warehouse_taken', 0)}\n"
             f"⭐ Уровень: {data.get('level', 1)}\n"
             f"💎 Опыт: {data.get('xp', 0)}\n"
+            f"🏅 Очки достижений: {achievement_points}\n"
             f"🆔 Telegram ID: {user_id}",
             reply_markup=keyboard
         )
@@ -718,24 +741,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "profile_achievements":
         user_data = approved_users.get(actor_id, {})
-        achievements = []
-
-        if user_data.get("joined"):
-            achievements.append("🥇 Первый день в клане")
-        if int(user_data.get("contribution", 0) or 0) >= 1000:
-            achievements.append("📦 Складовщик I")
-        if int(user_data.get("activity", 0) or 0) >= 10:
-            achievements.append("🔥 Активист I")
-        if is_leader(actor_id):
-            achievements.append("👑 Командир")
-
-        if not achievements:
-            achievements_text = "Пока нет достижений."
-        else:
-            achievements_text = "\n".join(f"• {item}" for item in achievements)
+        update_player_achievements(actor_id)
 
         await query.message.reply_text(
-            f"🏆 Достижения игрока\n\n{achievements_text}"
+            render_achievements(user_data)
         )
         return
 
@@ -916,6 +925,9 @@ async def confirm_warehouse_request(query, context, actor_id, data):
             player["activity"] = int(player.get("activity", 0) or 0) + 1
             player["xp"] = int(player.get("xp", 0) or 0) + amount
             player["level"] = max(1, int(player.get("xp", 0) or 0) // 1000 + 1)
+            gained = sync_achievements(player)
+            if gained:
+                player["activity"] = int(player.get("activity", 0) or 0) + len(gained) * 2
 
             save_users(approved_users)
 
@@ -953,6 +965,9 @@ async def confirm_warehouse_request(query, context, actor_id, data):
             player["activity"] = int(player.get("activity", 0) or 0) + 1
             player["xp"] = int(player.get("xp", 0) or 0) + max(1, amount // 10)
             player["level"] = max(1, int(player.get("xp", 0) or 0) // 1000 + 1)
+            gained = sync_achievements(player)
+            if gained:
+                player["activity"] = int(player.get("activity", 0) or 0) + len(gained) * 2
 
             save_users(approved_users)
 
