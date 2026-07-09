@@ -110,6 +110,131 @@ def now():
     return datetime.now().strftime("%d.%m.%Y %H:%M")
 
 
+
+def safe_int(value, default=0):
+    try:
+        return int(value or default)
+    except Exception:
+        return default
+
+
+def progress_bar(current, target, size=10):
+    current = safe_int(current)
+    target = safe_int(target, 1)
+
+    if target <= 0:
+        return "▰" * size + " 100%"
+
+    percent = min(100, max(0, int((current / target) * 100)))
+    filled = int(size * percent / 100)
+    empty = size - filled
+
+    return f"{'▰' * filled}{'▱' * empty} {percent}%"
+
+
+def get_joined_days(player):
+    joined = player.get("joined")
+    if not joined:
+        return 0
+
+    try:
+        joined_date = datetime.strptime(joined, "%d.%m.%Y")
+        return max(0, (datetime.now() - joined_date).days)
+    except Exception:
+        return 0
+
+
+def get_level_rank(level):
+    level = safe_int(level, 1)
+
+    if level >= 100:
+        return "🔴 Мифический"
+    if level >= 50:
+        return "🟡 Легенда"
+    if level >= 25:
+        return "🟣 Элита"
+    if level >= 10:
+        return "🔵 Ветеран"
+    if level >= 5:
+        return "🟢 Опытный"
+
+    return "⚪ Новичок"
+
+
+def get_tournament_totals(player):
+    stats = player.get("tournaments")
+    if not isinstance(stats, dict):
+        return 0, 0, 0
+
+    played = 0
+    wins = 0
+
+    for item in stats.values():
+        if isinstance(item, dict):
+            played += safe_int(item.get("played"))
+            wins += safe_int(item.get("wins"))
+
+    winrate = int((wins / played) * 100) if played else 0
+    return played, wins, winrate
+
+
+def render_profile_card(player, user_id, achievement_points):
+    level = safe_int(player.get("level"), 1)
+    xp = safe_int(player.get("xp"), 0)
+    xp_current = xp % 1000
+    xp_needed = 1000 - xp_current if xp_current else 1000
+    level_bar = progress_bar(xp_current, 1000, 10)
+
+    activity = safe_int(player.get("activity"), 0)
+    activity_target = 50
+    for target in (50, 200, 500, 1000, 2500, 5000):
+        if activity < target:
+            activity_target = target
+            break
+    else:
+        activity_target = max(5000, activity)
+    activity_bar = progress_bar(activity, activity_target, 10)
+
+    joined_days = get_joined_days(player)
+    tournament_played, tournament_wins, tournament_winrate = get_tournament_totals(player)
+
+    return (
+        "╔══════════════════════╗\n"
+        "        👤 ПРОФИЛЬ ИГРОКА\n"
+        "╚══════════════════════╝\n\n"
+        f"🎮 {player.get('name', 'не указан')}\n"
+        f"{player.get('role', '⚔️ Боец')}\n"
+        f"{get_level_rank(level)}\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "📈 ПРОГРЕСС\n\n"
+        f"⭐ Уровень: {level}\n"
+        f"💎 XP: {xp_current} / 1000\n"
+        f"{level_bar}\n"
+        f"⏳ До следующего уровня: {xp_needed} XP\n\n"
+        f"🔥 Активность: {activity} / {activity_target}\n"
+        f"{activity_bar}\n"
+        f"🏅 Очки достижений: {achievement_points}\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🏰 КЛАН\n\n"
+        f"📅 В клане: {joined_days} дней\n"
+        f"📆 Дата вступления: {player.get('joined', 'неизвестно')}\n"
+        f"💰 Общий вклад: {player.get('contribution', 0)}\n"
+        f"📥 Передано на склад: {player.get('warehouse_added', 0)}\n"
+        f"📤 Получено со склада: {player.get('warehouse_taken', 0)}\n"
+        f"⚔️ Рейдов: {player.get('raids', 0)}\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🏆 ТУРНИРЫ\n\n"
+        f"🎮 Участий: {tournament_played}\n"
+        f"🥇 Побед: {tournament_wins}\n"
+        f"📈 Винрейт: {tournament_winrate}%\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "📱 TELEGRAM\n\n"
+        f"👤 Имя: {player.get('telegram_name', 'не указано')}\n"
+        f"📨 Аккаунт: {player.get('telegram_account', 'не указан')}\n"
+        f"🆔 ID: {user_id}"
+    )
+
+
 def update_player_achievements(user_id):
     if user_id not in approved_users:
         return []
@@ -270,21 +395,8 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
 
         await update.message.reply_text(
-            "👤 Профиль игрока\n\n"
-            f"🎮 Игровой ник: {data.get('name', 'не указан')}\n"
-            f"📨 Telegram аккаунт: {data.get('telegram_account', 'не указан')}\n"
-            f"👤 Ник в Telegram: {data.get('telegram_name', 'не указан')}\n"
-            f"🎖 Роль: {data.get('role', 'не указана')}\n"
-            f"📅 В клане с: {data.get('joined', 'неизвестно')}\n"
-            f"🏆 Активность: {data.get('activity', 0)}\n"
-            f"💰 Взносы: {data.get('contribution', 0)}\n"
-            f"📦 Передано на склад: {data.get('warehouse_added', 0)}\n"
-            f"📤 Получено со склада: {data.get('warehouse_taken', 0)}\n"
-            f"⭐ Уровень: {data.get('level', 1)}\n"
-            f"💎 Опыт: {data.get('xp', 0)}\n"
-            f"🏅 Очки достижений: {achievement_points}\n"
-            f"🆔 Telegram ID: {user_id}",
-            reply_markup=keyboard
+            render_profile_card(data, user_id, achievement_points),
+            reply_markup=keyboard,
         )
 
     elif text == "📋 Список участников":
@@ -939,21 +1051,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🏆 Турниры", callback_data="tournaments_menu")],
         ])
 
+        achievement_points = get_achievement_points(user_data)
+
         await query.edit_message_text(
-            "👤 Профиль игрока\n\n"
-            f"🎮 Игровой ник: {user_data.get('name', 'не указан')}\n"
-            f"📨 Telegram аккаунт: {user_data.get('telegram_account', 'не указан')}\n"
-            f"👤 Ник в Telegram: {user_data.get('telegram_name', 'не указан')}\n"
-            f"🎖 Роль: {user_data.get('role', 'не указана')}\n"
-            f"📅 В клане с: {user_data.get('joined', 'неизвестно')}\n"
-            f"🏆 Активность: {user_data.get('activity', 0)}\n"
-            f"💰 Взносы: {user_data.get('contribution', 0)}\n"
-            f"📦 Передано на склад: {user_data.get('warehouse_added', 0)}\n"
-            f"📤 Получено со склада: {user_data.get('warehouse_taken', 0)}\n"
-            f"⭐ Уровень: {user_data.get('level', 1)}\n"
-            f"💎 Опыт: {user_data.get('xp', 0)}\n"
-            f"🆔 Telegram ID: {actor_id}",
-            reply_markup=keyboard
+            render_profile_card(user_data, actor_id, achievement_points),
+            reply_markup=keyboard,
         )
         return
 
