@@ -365,3 +365,92 @@ def render_achievements(player):
             text += f"   Прогресс: {progress_text} {bar}\n"
 
     return text.strip()
+
+
+
+def get_achievement_categories():
+    """Возвращает список категорий достижений в правильном порядке."""
+    categories = []
+    for ach in ACHIEVEMENTS:
+        category = ach["category"]
+        if category not in categories:
+            categories.append(category)
+    return categories
+
+
+def achievement_summary(player):
+    unlocked_ids = set(get_unlocked_achievement_ids(player))
+    total = len(ACHIEVEMENTS)
+    unlocked_count = len([ach for ach in ACHIEVEMENTS if ach["id"] in unlocked_ids])
+    percent = int((unlocked_count / total) * 100) if total else 0
+    points = get_achievement_points(player)
+
+    return {
+        "total": total,
+        "unlocked": unlocked_count,
+        "percent": percent,
+        "points": points,
+        "bar": _progress_bar(unlocked_count, total, 12),
+    }
+
+
+def render_achievements_overview(player):
+    summary = achievement_summary(player)
+    categories = get_achievement_categories()
+    unlocked_ids = set(get_unlocked_achievement_ids(player))
+
+    text = (
+        "🏆 Достижения игрока\n\n"
+        f"Получено: {summary['unlocked']} / {summary['total']} ({summary['percent']}%)\n"
+        f"Очки достижений: {summary['points']}\n"
+        f"{summary['bar']}\n\n"
+        "📂 Категории:\n"
+    )
+
+    for category in categories:
+        category_items = [ach for ach in ACHIEVEMENTS if ach["category"] == category]
+        category_unlocked = len([ach for ach in category_items if ach["id"] in unlocked_ids])
+        text += f"• {category}: {category_unlocked} / {len(category_items)}\n"
+
+    text += "\nВыберите категорию кнопками ниже."
+    return text.strip()
+
+
+def render_achievement_category(player, category):
+    unlocked_ids = set(get_unlocked_achievement_ids(player))
+    items = [ach for ach in ACHIEVEMENTS if ach["category"] == category]
+
+    if not items:
+        return "⚠️ Категория не найдена."
+
+    unlocked_count = len([ach for ach in items if ach["id"] in unlocked_ids])
+    text = f"{category}\n\nПолучено: {unlocked_count} / {len(items)}\n\n"
+
+    for ach in items:
+        progress = ach["progress"](player)
+        target = ach["target"]
+        is_unlocked = ach["id"] in unlocked_ids
+        status = "✅" if is_unlocked else "🔒"
+
+        text += f"{status} {ach['icon']} {ach['name']}\n"
+        text += f"   {ach['description']}\n"
+        text += f"   🏅 Очки: {ach['points']}\n"
+
+        if not is_unlocked and target > 1:
+            current = min(progress, target)
+            text += f"   Прогресс: {current} / {target}\n"
+            text += f"   {_progress_bar(progress, target, 10)}\n"
+
+        text += "\n"
+
+    return text.strip()
+
+
+def render_new_achievement_message(achievement):
+    return (
+        "🎉 Новое достижение!\n\n"
+        f"{achievement['icon']} {achievement['name']}\n\n"
+        f"📖 {achievement['description']}\n"
+        f"🏅 +{achievement['points']} очков достижений\n"
+        "🔥 +2 активности"
+    )
