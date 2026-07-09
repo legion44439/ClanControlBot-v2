@@ -55,6 +55,13 @@ from honor_awards import (
 )
 from profile_card import render_profile_card
 
+from platform_core import (
+    is_platform_owner,
+    get_all_clans,
+    register_clan,
+    render_clans_list,
+)
+
 from keyboards import (
     main_menu,
     guest_menu,
@@ -1696,3 +1703,55 @@ async def deny_warehouse_request(query, context, actor_id, data):
         )
     except Exception:
         pass
+
+# ==============================
+# PLATFORM OWNER COMMANDS
+# ==============================
+
+async def platform_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+
+    if not is_platform_owner(user_id):
+        await update.message.reply_text("⛔ Нет доступа.")
+        return
+
+    await update.message.reply_text(
+        "🛡 Панель владельца платформы\n\n"
+        "/clans — список кланов\n"
+        "/create_clan Название — создать новый клан"
+    )
+
+
+async def clans_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+
+    if not is_platform_owner(user_id):
+        await update.message.reply_text("⛔ Нет доступа.")
+        return
+
+    clans = get_all_clans()
+    await update.message.reply_text(render_clans_list(clans))
+
+
+async def create_clan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+
+    if not is_platform_owner(user_id):
+        await update.message.reply_text("⛔ Нет доступа.")
+        return
+
+    name = " ".join(context.args).strip()
+
+    if not name:
+        await update.message.reply_text(
+            "⚠️ Укажи название клана.\n\n"
+            "Пример:\n"
+            "/create_clan Alpha"
+        )
+        return
+
+    register_clan(name=name, owner_id=user_id)
+
+    await update.message.reply_text(
+        f"✅ Клан создан.\n\n🏰 Название: {name}"
+    )
